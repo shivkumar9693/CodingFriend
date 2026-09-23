@@ -117,7 +117,3 @@ Comprehensive project documentation is available in the [`docs/`](file:///c:/Use
 - [Architecture Decision Records (ADRs)](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/decisions/)
 
 ---
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).

@@ -1,0 +1,24 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: ai-coding-mentor-test
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
+app:
+  mentor:
+    ollama:
+      base-url: http://localhost:11434
+      model: qwen2.5-coder:latest
+      timeout-seconds: 5
+  security:
+    jwt:
+      secret: testSecretKeyForUnitAndIntegrationTestingAtLeast256BitsLong12345
+      expiration-ms: 3600000

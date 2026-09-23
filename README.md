@@ -1,7 +1,4 @@
 # AI Coding Mentor
-
-[![CI Build](https://github.com/ai-coding-mentor/ai-coding-mentor/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-coding-mentor/ai-coding-mentor/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)

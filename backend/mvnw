@@ -41,4 +41,21 @@ else
     JAVACMD="java"
 fi
 
-exec "$JAVACMD" $MAVEN_OPTS -classpath "$WRAPPER_JAR" $WRAPPER_LAUNCHER "$@"
+MAVEN_PROJECTBASEDIR="$(cd "$(dirname "$0")" && pwd)"
+
+# For Cygwin / MSYS / Git Bash on Windows, convert paths to Windows format
+case "$(uname)" in
+    CYGWIN*|MINGW*|MSYS*)
+        if command -v cygpath > /dev/null 2>&1; then
+            [ -n "$WRAPPER_JAR" ] && WRAPPER_JAR="$(cygpath --windows "$WRAPPER_JAR")"
+            [ -n "$JAVA_HOME" ] && JAVA_HOME="$(cygpath --windows "$JAVA_HOME")"
+            [ -n "$MAVEN_PROJECTBASEDIR" ] && MAVEN_PROJECTBASEDIR="$(cygpath --windows "$MAVEN_PROJECTBASEDIR")"
+        fi
+        ;;
+esac
+
+exec "$JAVACMD" \
+    $MAVEN_OPTS \
+    -Dmaven.multiModuleProjectDirectory="$MAVEN_PROJECTBASEDIR" \
+    -classpath "$WRAPPER_JAR" \
+    $WRAPPER_LAUNCHER "$@"

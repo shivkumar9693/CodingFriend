@@ -47,6 +47,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
+          cache-dependency-path: backend/pom.xml
 
       - name: Grant Execute Permission to Maven Wrapper
         working-directory: backend

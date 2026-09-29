@@ -1,19 +1,61 @@
-# Database Design & Migrations
+# Database Design & Architecture Specification
 
-## 1. Design Principles
+## 1. Executive Overview
 
-- **RDBMS**: PostgreSQL 16+.
-- **Schema Management**: Flyway database migrations under `backend/src/main/resources/db/migration/`.
-- **Naming Conventions**:
-  - Tables and columns: `snake_case`.
-  - Primary keys: `UUID` or `BIGSERIAL` (UUID preferred for public identifiers).
-  - Foreign keys: `<referenced_table_singular>_id`.
-  - Timestamps: `created_at`, `updated_at` (UTC `TIMESTAMP WITH TIME ZONE`).
-- **Entity Encapsulation**: Controllers and external callers never receive JPA entities directly; all external interactions use strongly-typed DTOs.
+**AI Coding Mentor** utilizes **PostgreSQL 16+** as its primary relational database management system, managed with version-controlled, automated schema migrations via **Flyway** and object-relational mapping via **Spring Data JPA / Hibernate**.
 
 ---
 
-## 2. Entity-Relationship Model (Conceptual)
+## 2. Architectural Database Decisions
+
+### 2.1 Database Choice: PostgreSQL 16+
+- **ACID Compliance & Reliability**: Robust transactional guarantees for critical paths (user submissions, grading state transitions, user progress tracking).
+- **Semi-Structured Diagnostics (JSONB)**: Native high-performance `JSONB` support allows structured compiler diagnostics, AST analysis outputs, and LLM mentor metadata to be stored and indexed alongside relational records.
+- **Native UUID Generation**: Efficient built-in `gen_random_uuid()` function minimizes round-trips and simplifies primary key creation.
+- **Modern Concurrency Control**: Multiversion Concurrency Control (MVCC) and rock-solid connection pooling via HikariCP.
+
+### 2.2 Primary Key Strategy: UUID vs Numeric IDs
+We chose **128-bit UUIDs (v4)** as the standard primary key format across all entities:
+- **Security & Anti-Enumeration**: Numeric auto-incrementing IDs (`BIGSERIAL`) expose sequential business data (e.g., total user count, total submissions) and allow malicious scraping/enumeration. UUIDs prevent ID guessing attacks.
+- **Client & Offline Generation**: UUIDs can be generated on client or application layer if needed before persistence without central lock contention.
+- **Distributed Safety**: Allows seamless extraction of modules into independent microservices or distributed shards in the future without ID collision risks.
+- **Storage Efficiency**: Stored natively in PostgreSQL as 16-byte binary structures with high-efficiency B-Tree index traversal.
+
+### 2.3 Timestamp Strategy
+- **Standard**: All timestamp fields use `TIMESTAMPTZ` (`TIMESTAMP WITH TIME ZONE`).
+- **Timezone Normalization**: All timestamps are persisted and handled in **UTC** across backend JVM, database, and client communication.
+- **Auditing Columns**:
+  - `created_at`: `TIMESTAMPTZ NOT NULL DEFAULT NOW()`, immutable once created.
+  - `updated_at`: `TIMESTAMPTZ NOT NULL DEFAULT NOW()`, maintained via JPA lifecycle hooks (`@PreUpdate`) and database defaults.
+- **Rationale**: Eliminates ambiguity during Daylight Saving Time (DST) changes, cross-timezone learner sessions, and server migrations.
+
+### 2.4 Naming Conventions
+- **Tables**: Plural `snake_case` (e.g., `users`, `problems`, `test_cases`, `submissions`, `mistake_reports`).
+- **Columns**: `snake_case` (e.g., `password_hash`, `time_limit_ms`, `created_at`).
+- **Primary Keys**: `id` (UUID).
+- **Foreign Keys**: `<referenced_table_singular>_id` (e.g., `user_id`, `problem_id`, `submission_id`).
+- **Indexes**: `idx_<table_name>_<column_name(s)>` (e.g., `idx_users_email`, `idx_problems_slug`).
+- **SQL Keywords**: Uppercase (e.g., `CREATE TABLE`, `NOT NULL`, `PRIMARY KEY`, `DEFAULT`).
+
+### 2.5 Migration Strategy: Flyway
+- **Location**: `backend/src/main/resources/db/migration/`
+- **Naming Pattern**: `V{VERSION}__{DESCRIPTION}.sql` (e.g., `V1__initial_schema.sql`).
+- **Immutability**: Applied migration scripts are strictly immutable; once merged and applied, modifications must be introduced via new forward migrations.
+- **Startup Lifecycle**: Flyway automatically executes upon Spring Boot startup before Hibernate schema validation (`hibernate.ddl-auto=validate`), ensuring zero schema drift between code and persistence.
+- **Environments**:
+  - `local`: Automated Flyway migration against local PostgreSQL instance.
+  - `test`: Automated Flyway migration against ephemeral Testcontainers PostgreSQL instance during integration tests.
+  - `prod`: Automated Flyway migration with baseline validation and read-only schema checks.
+
+### 2.6 Indexing Strategy
+- **Primary Keys**: B-Tree index created automatically on `id`.
+- **Unique Lookups**: Unique B-Tree indexes on natural keys (`users.email`, `problems.slug`).
+- **Foreign Keys**: Explicit indexes on all FK columns (`problem_id`, `user_id`, `submission_id`) to accelerate `JOIN` queries and cascaded operations.
+- **Search & Filter Columns**: Selective indexing on high-cardinality filter fields (`problems.difficulty`, `submissions.status`).
+
+---
+
+## 3. Entity-Relationship Model (Conceptual Architecture)
 
 ```mermaid
 erDiagram
@@ -98,12 +140,13 @@ erDiagram
 
 ---
 
-## 3. Detailed Schema Definitions
+## 4. Current Schema (Day 2 Baseline)
 
-### 3.1 `users`
-Represents registered learners and platform administrators.
+### `V1__initial_schema.sql` (Users and Roles Foundation)
+Represents the core user foundation required for identity and role management:
+
 ```sql
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -112,108 +155,20 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_users_email ON users(email);
-```
 
-### 3.2 `problems`
-Catalog of coding challenges.
-```sql
-CREATE TABLE problems (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug VARCHAR(120) NOT NULL UNIQUE,
-    title VARCHAR(200) NOT NULL,
-    difficulty VARCHAR(20) NOT NULL, -- EASY, MEDIUM, HARD
-    description TEXT NOT NULL,
-    starter_code TEXT NOT NULL,
-    time_limit_ms INT NOT NULL DEFAULT 2000,
-    memory_limit_mb INT NOT NULL DEFAULT 256,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_problems_difficulty ON problems(difficulty);
-CREATE INDEX idx_problems_slug ON problems(slug);
-```
-
-### 3.3 `test_cases`
-Test suites for problems, distinguishing sample/public tests from evaluation/hidden tests.
-```sql
-CREATE TABLE test_cases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    problem_id UUID NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
-    input_data TEXT NOT NULL,
-    expected_output TEXT NOT NULL,
-    is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
-    sequence_order INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_test_cases_problem_id ON test_cases(problem_id);
-```
-
-### 3.4 `submissions`
-Tracks all code submissions and outcomes.
-```sql
-CREATE TABLE submissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    problem_id UUID NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
-    source_code TEXT NOT NULL,
-    language VARCHAR(30) NOT NULL DEFAULT 'JAVA',
-    status VARCHAR(50) NOT NULL, -- PENDING, RUNNING, ACCEPTED, WRONG_ANSWER, COMPILE_ERROR, TIME_LIMIT_EXCEEDED, RUNTIME_ERROR
-    execution_time_ms INT,
-    memory_used_kb INT,
-    tests_passed INT DEFAULT 0,
-    total_tests INT DEFAULT 0,
-    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_submissions_user_id ON submissions(user_id);
-CREATE INDEX idx_submissions_problem_id ON submissions(problem_id);
-CREATE INDEX idx_submissions_status ON submissions(status);
-```
-
-### 3.5 `mistake_reports`
-Sanitized diagnostic analysis derived from failed submissions.
-```sql
-CREATE TABLE mistake_reports (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-    error_type VARCHAR(60) NOT NULL, -- SYNTAX, RUNTIME_EXCEPTION, LOGIC_ASSERTION, TIMEOUT
-    compiler_output TEXT,
-    runtime_stacktrace TEXT,
-    diagnostic_summary JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_mistake_reports_submission_id ON mistake_reports(submission_id);
-```
-
-### 3.6 `mentor_chats` and `hints`
-Maintains conversational state and progressive hint ladder history.
-```sql
-CREATE TABLE mentor_chats (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-    current_hint_level INT NOT NULL DEFAULT 1,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE hints (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    mentor_chat_id UUID NOT NULL REFERENCES mentor_chats(id) ON DELETE CASCADE,
-    hint_level INT NOT NULL, -- 1, 2, 3, 4
-    socratic_stage VARCHAR(50) NOT NULL, -- NUDGE, CONCEPTUAL, ALGORITHMIC, TARGETED_POINTER
-    hint_content TEXT NOT NULL,
-    structured_data JSONB,
-    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_hints_chat_id ON hints(mentor_chat_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 ```
 
 ---
 
-## 4. Migration Strategy
+## 5. Planned Schema Migrations (Subsequent Days)
 
-- Migrations follow standard Flyway format: `V{VERSION}__{DESCRIPTION}.sql`.
-- Migration files are immutable once applied. Changes to schema require a new forward migration script.
-- Flyway automatically validates checksums upon Spring Boot startup.
+| Version | Target Milestone | Description | Tables Included |
+|---|---|---|---|
+| **V1** | Day 2 (Current) | Users & Role Foundation | `users` |
+| **V2** | Day 3 | Problem Catalog & Test Suites | `problems`, `test_cases` |
+| **V3** | Day 4 | Submissions & Execution Tracking | `submissions` |
+| **V4** | Day 5 | Mistake Diagnostic Engine | `mistake_reports` |
+| **V5** | Day 6 | Socratic Mentor Chat & Hints | `mentor_chats`, `hints` |
+| **V6** | Day 7 | Learning Mastery & Spaced Progress | `learner_mastery`, `concept_tags` |

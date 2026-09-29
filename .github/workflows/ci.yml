@@ -90,6 +90,10 @@ jobs:
         working-directory: frontend
         run: npm ci || npm install
 
+      - name: Run Frontend Tests
+        working-directory: frontend
+        run: npm test
+
       - name: Build Frontend Bundle
         working-directory: frontend
         run: npm run build

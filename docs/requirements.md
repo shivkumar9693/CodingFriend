@@ -6,13 +6,27 @@
 
 ---
 
-## 2. Functional Requirements (FR)
+## 2. Implementation Phasing & Milestones
 
-### FR1: Authentication & User Accounts
+| Phase | Milestone | Scope / Deliverables | Status |
+|---|---|---|---|
+| **Phase 1** | **Project Foundation** | Multi-module directory setup, Java 17 Spring Boot 3 modular monolith skeleton, health endpoints, environment configurations (`local`, `test`, `prod`), Flyway V1 schema, React + Vite + TypeScript frontend with routing, sandbox Dockerfile, Docker Compose baseline, CI pipelines. | **Completed (Day 1)** |
+| **Phase 2** | **Authentication & Identity** | User domain, BCrypt password hashing, JWT issuance and validation filter, login/registration REST APIs, authentication state in frontend. | *Planned* |
+| **Phase 3** | **Problem Catalog** | Problem domain, test suite models (public vs hidden), difficulty and topic taxonomy, problem CRUD, starter code templates, problem browser UI. | *Planned* |
+| **Phase 4** | **Sandboxed Code Execution** | Isolated Docker execution worker, JUnit test runner harness, process isolation (`--network none`, cgroups), submission lifecycle state machine. | *Planned* |
+| **Phase 5** | **Mistake Analysis Engine** | Compiler log parser, runtime stack trace parser, assertion mismatch extractor, structured diagnostic generator. | *Planned* |
+| **Phase 6** | **Socratic AI Mentor (Ollama)** | 4-tier progressive prompt ladder, Ollama HTTP client, anti-solution validator, markdown chat interface in frontend. | *Planned* |
+| **Phase 7** | **Interactive Web Editor** | Monaco editor integration, live run/submit actions, test output drawer, hint request panel. | *Planned* |
+
+---
+
+## 3. Functional Requirements (FR)
+
+### FR1: Authentication & User Accounts *(Planned - Phase 2)*
 - Learners can register, authenticate via email/password, and receive secure JWT access tokens.
 - Role-based authorization: `LEARNER`, `ADMIN`.
 
-### FR2: Problem Discovery & Workspace
+### FR2: Problem Discovery & Workspace *(Planned - Phase 3 & 7)*
 - Learners can browse coding challenges filtered by difficulty (`EASY`, `MEDIUM`, `HARD`), topic (`Arrays`, `Strings`, `Recursion`, `OOP`), and status (`Unsolved`, `Attempted`, `Solved`).
 - Problem workspace provides:
   - Problem description with markdown formatting.
@@ -21,18 +35,18 @@
   - Language-specific starter code template (Java).
   - Web-based Monaco code editor.
 
-### FR3: Submission & Execution Lifecycle
+### FR3: Submission & Execution Lifecycle *(Planned - Phase 4)*
 - Learners can submit Java code for evaluation.
 - The system checks code against visible sample test cases and hidden evaluation test suites.
 - Real-time submission status reporting (`SUBMITTED`, `COMPILING`, `RUNNING`, `ACCEPTED`, `WRONG_ANSWER`, `COMPILE_ERROR`, `TIME_LIMIT_EXCEEDED`, `RUNTIME_ERROR`).
 
-### FR4: Mistake Analysis Engine
+### FR4: Mistake Analysis Engine *(Planned - Phase 5)*
 - When a submission fails:
   - Extract failure type: Syntax, Runtime Exception (NPE, ArrayIndexOutOfBounds), Test Assertion Failure, or Timeout.
   - Capture sanitized failure metadata (e.g., failed input signature for visible tests; generalized failure category for hidden tests).
   - Prepare mistake payload for the mentor engine.
 
-### FR5: Progressive Socratic AI Mentor
+### FR5: Progressive Socratic AI Mentor *(Planned - Phase 6)*
 - When a learner requests assistance or fails a problem:
   - The AI mentor provides progressive hints across 4 defined levels:
     - **Level 1 (Nudge)**: Direct attention to an unnoticed nuance or assumption.
@@ -42,12 +56,12 @@
   - Strict anti-spoiler filter: The AI is prohibited from outputting working Java code solutions.
   - Responses must be structured and validated against a strict JSON schema before display.
 
-### FR6: Privacy & Anti-Cheat
+### FR6: Privacy & Anti-Cheat *(Cross-Cutting Architecture)*
 - Hidden test cases and their specific inputs/outputs must NEVER be transferred to the browser client or exposed in API payloads.
 
 ---
 
-## 3. Non-Functional Requirements (NFR)
+## 4. Non-Functional Requirements (NFR)
 
 ### NFR1: Security & Sandboxing
 - **Untrusted Code Execution**: All learner Java code runs in an isolated ephemeral sandbox.

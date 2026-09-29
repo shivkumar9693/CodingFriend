@@ -57,8 +57,9 @@ mvnw.cmd spring-boot:run
 ./mvnw spring-boot:run
 ```
 - API Base: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- REST Health Check: `http://localhost:8080/api/v1/health`
 - Actuator Health: `http://localhost:8080/actuator/health`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ### Step 5: Run Frontend (React + Vite)
 Open a new terminal in `frontend/`:
@@ -85,6 +86,7 @@ mvnw.cmd test
 ### Run Frontend Tests and Build
 ```bash
 cd frontend
+npm test
 npm run build
 ```
 

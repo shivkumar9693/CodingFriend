@@ -66,7 +66,30 @@ flowchart TB
 
 ---
 
-## 3. Backend Module Specifications
+## 3. Implementation Status: Current Baseline (Day 1) vs Planned Components
+
+| Component / Subsystem | Current Status | Description |
+|---|---|---|
+| **Project Foundation** | `Implemented` | Multi-module workspace structure (`backend/`, `frontend/`, `code-executor/`, `docs/`, `.github/`). |
+| **Backend Modular Monolith** | `Implemented` | Spring Boot 3.3.4 (Java 17) package hierarchy (`auth`, `user`, `problem`, `submission`, `execution`, `mistake`, `mentor`, `learning`, `common`). |
+| **Environment & Profiles** | `Implemented` | `application.yml`, `application-local.yml`, `application-test.yml`, `application-prod.yml` with 100% environment variable overrides. |
+| **Health API & Diagnostics** | `Implemented` | Structured `/api/v1/health` endpoint and `/actuator/health` integration with uniform `ApiResponse<T>`. |
+| **Global Error Handling** | `Implemented` | Central `@RestControllerAdvice` mapping domain exceptions to standard RFC-compliant `ErrorResponse` payloads. |
+| **Database Schema V1** | `Implemented` | Flyway SQL migration (`V1__initial_schema.sql`) for users, problems, test cases, submissions, mistake reports, mentor chats, and hints. |
+| **Frontend Web App** | `Implemented` | React 18 + Vite + TypeScript SPA with React Router, responsive dark layout, and automated Vitest suite. |
+| **Sandbox Definition** | `Implemented` | Alpine + Eclipse Temurin 17 Dockerfile running unprivileged (`UID 1001`) with restricted entrypoint. |
+| **Docker Compose Topology** | `Implemented` | Multi-container stack definition for Postgres 16, Redis 7, Ollama, Backend, and Frontend. |
+| **CI Automation** | `Implemented` | GitHub Actions workflow verifying backend Java compilation/tests and frontend TypeScript build. |
+| **Authentication Module** | `Planned` | JWT filter chain, user registration/login endpoints, BCrypt hashing *(Next Milestone)*. |
+| **Problem Management** | `Planned` | Problem listing, detail endpoints, and seed datasets *(Planned)*. |
+| **Isolated Execution Engine**| `Planned` | Dynamic Docker container spawning, test wrapper runner, and execution timeout watchdog *(Planned)*. |
+| **Mistake Classifier** | `Planned` | AST/compiler error and stack trace diagnostics engine *(Planned)*. |
+| **Socratic AI Mentor** | `Planned` | 4-tier progressive prompt generator and Ollama client integration *(Planned)*. |
+| **Monaco Code Editor** | `Planned` | In-browser Java editor with live syntax highlighting and execution triggers *(Planned)*. |
+
+---
+
+## 4. Backend Module Specifications
 
 All domain modules reside under `com.aicodingmentor`:
 
@@ -84,7 +107,7 @@ All domain modules reside under `com.aicodingmentor`:
 
 ---
 
-## 4. Communication & Coupling Rules
+## 5. Communication & Coupling Rules
 
 1. **In-Process Module Interactions**:
    - Modules interact primarily via high-level Spring services or domain event publishers (`ApplicationEventPublisher`).
@@ -96,7 +119,7 @@ All domain modules reside under `com.aicodingmentor`:
 
 ---
 
-## 5. Technology Standards
+## 6. Technology Standards
 
 - **Java 17 / Spring Boot 3.3.x**: Leverages modern Java language features (records, pattern matching, sealed interfaces).
 - **PostgreSQL 16**: Relational storage for problems, users, submissions, and structured test metadata.

@@ -37,6 +37,12 @@ public class User {
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role = UserRole.LEARNER;
 
+    @Column(name = "bio", length = 500)
+    private String bio;
+
+    @Column(name = "github_username", length = 100)
+    private String githubUsername;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -50,6 +56,17 @@ public class User {
         this.email = email;
         this.passwordHash = passwordHash;
         this.fullName = fullName;
+        this.role = role != null ? role : UserRole.LEARNER;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public User(String email, String passwordHash, String fullName, String bio, String githubUsername, UserRole role) {
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.fullName = fullName;
+        this.bio = bio;
+        this.githubUsername = githubUsername;
         this.role = role != null ? role : UserRole.LEARNER;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
@@ -103,6 +120,22 @@ public class User {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getGithubUsername() {
+        return githubUsername;
+    }
+
+    public void setGithubUsername(String githubUsername) {
+        this.githubUsername = githubUsername;
     }
 
     public UserRole getRole() {

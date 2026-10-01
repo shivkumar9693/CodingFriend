@@ -4,12 +4,24 @@ server:
 spring:
   application:
     name: ai-coding-mentor-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      repositories:
+        enabled: false
   autoconfigure:
     exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
 
 management:
   endpoint:
@@ -25,4 +37,5 @@ app:
   security:
     jwt:
       secret: testSecretKeyForUnitAndIntegrationTestingAtLeast256BitsLong12345
-      expiration-ms: 3600000
+      access-token-expiration-ms: 3600000
+      refresh-token-expiration-ms: 86400000

@@ -1,13 +1,30 @@
 # AI Coding Mentor
 
-[![CI Build](https://github.com/ai-coding-mentor/ai-coding-mentor/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-coding-mentor/ai-coding-mentor/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+> 🔒 **⚠️ PRIVATE PROJECT - All Rights Reserved**
+>
+> This repository is the exclusive property of **Shivkumar** and is intended for personal use only.
+> This project is **NOT open source** and may **NOT** be copied, modified, distributed, forked, or used without explicit written permission.
+> For full licensing details, see [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md).
+
+---
+
 [![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 
 > An online coding platform where learners solve Java coding problems and an AI mentor analyzes their mistakes to provide progressive Socratic hints instead of immediately revealing the solution.
+
+---
+
+## 📋 Repository Status
+
+- **Owner:** Shivkumar ([@shivkumar9693](https://github.com/shivkumar9693))
+- **License:** All Rights Reserved
+- **Status:** Private Project
+- **Intended Use:** Personal / Private Use Only
+- **Public Contribution:** NOT Accepted
+- **Forks:** NOT Permitted
 
 ---
 
@@ -50,7 +67,7 @@
 ## Repository Structure
 
 ```
-ai-coding-mentor/
+CodingFriend/
 ├── backend/            # Spring Boot 3 modular monolith
 │   ├── src/main/java/  # Application domain modules (auth, user, problem, submission, etc.)
 │   └── src/test/java/  # Unit, integration, and Testcontainers suites
@@ -64,7 +81,9 @@ ai-coding-mentor/
 ├── AGENTS.md           # Engineering principles and rules for AI contributors
 ├── .env.example        # Environment variable definitions
 ├── CONTRIBUTING.md     # Contribution guidelines and coding conventions
-└── LICENSE             # MIT License
+├── LICENSE             # All Rights Reserved License
+├── COPYRIGHT.md        # Copyright and ownership notice
+└── .github/CODEOWNERS  # Repository code ownership
 ```
 
 ---
@@ -123,28 +142,34 @@ In the Vercel project settings, set:
 - The SPA rewrite rule is pre-configured in `frontend/vercel.json` (`rewrites: [{"source": "/(.*)", "destination": "/index.html"}]`) to support client-side routing on page refresh.
 - Click **Deploy**. Vercel will run `npm run build` and publish the `dist/` directory.
 
-For full frontend documentation, see [frontend/README.md](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/frontend/README.md).
+For full frontend documentation, see [frontend/README.md](frontend/README.md).
 
 ---
 
 ## Documentation
 
-Comprehensive project documentation is available in the [`docs/`](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/) directory:
+Comprehensive project documentation is available in the [`docs/`](docs/) directory:
 
-- [Architecture Overview](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/architecture.md)
-- [Requirements & Specifications](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/requirements.md)
-- [Database Schema & Migrations](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/database-design.md)
-- [REST API Specifications](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/api-documentation.md)
-- [AI Mentor & Socratic System](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/ai-mentor.md)
-- [Code Execution Sandbox](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/code-execution.md)
-- [Security Guidelines](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/security.md)
-- [Development Setup Guide](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/development-setup.md)
-- [Deployment Strategy](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/deployment.md)
-- [Testing Strategy](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/testing.md)
-- [Architecture Decision Records (ADRs)](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/docs/decisions/)
+- [Architecture Overview](docs/architecture.md)
+- [Requirements & Specifications](docs/requirements.md)
+- [Database Schema & Migrations](docs/database-design.md)
+- [REST API Specifications](docs/api-documentation.md)
+- [AI Mentor & Socratic System](docs/ai-mentor.md)
+- [Code Execution Sandbox](docs/code-execution.md)
+- [Security Guidelines](docs/security.md)
+- [Development Setup Guide](docs/development-setup.md)
+- [Deployment Strategy](docs/deployment.md)
+- [Testing Strategy](docs/testing.md)
+- [Architecture Decision Records (ADRs)](docs/decisions/)
 
 ---
 
-## License
+## ⚠️ Legal Notice
 
-This project is licensed under the [MIT License](LICENSE).
+**This is a private project.** All source code, documentation, and materials are the exclusive property of Shivkumar.
+
+For full licensing and copyright information, please refer to:
+- [LICENSE](LICENSE) - All Rights Reserved License
+- [COPYRIGHT.md](COPYRIGHT.md) - Detailed Copyright Notice
+
+---

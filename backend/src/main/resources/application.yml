@@ -1,11 +1,15 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8081}
 
 spring:
   application:
     name: ai-coding-mentor-backend
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
+  data:
+    redis:
+      repositories:
+        enabled: false
 
 management:
   endpoints:

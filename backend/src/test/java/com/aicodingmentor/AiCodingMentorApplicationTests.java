@@ -4,12 +4,22 @@ import com.aicodingmentor.common.api.ApiResponse;
 import com.aicodingmentor.common.error.ErrorResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class AiCodingMentorApplicationTests {
+
+    @Test
+    @DisplayName("Spring Application Context loads successfully")
+    void contextLoads() {
+        // Verifies Spring context initializes properly with test profile
+    }
 
     @Test
     @DisplayName("ApiResponse factory methods construct valid response envelopes")

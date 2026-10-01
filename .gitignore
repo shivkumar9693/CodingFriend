@@ -56,6 +56,13 @@ lerna-debug.log*
 .env.*.local
 *.pem
 *.key
+*application-local.yml
+*application-local.yaml
+*application-local.properties
+
+# Documentation & Specifications
+docs/
+docs
 
 # IDEs & Editors
 .idea/

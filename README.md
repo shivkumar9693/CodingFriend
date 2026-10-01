@@ -13,6 +13,8 @@
 
 ## Key Features
 
+- **Authentication & Authorization**: Stateless JWT security with BCrypt password hashing, database-backed refresh token rotation/revocation, and role-based access control (`USER` and `ADMIN`).
+- **Coding Problem Management**: Full problem catalog with pagination, difficulty & tag filtering, Java starter templates, and admin problem curation with secure hidden test suite isolation.
 - **Progressive Socratic Mentorship**: Multi-tier hints (Nudge $\to$ Conceptual $\to$ Algorithmic $\to$ Targeted) powered by local LLMs via Ollama.
 - **Isolated Code Execution**: Secure, sandboxed code runner isolating untrusted learner code from the core application JVM.
 - **Production-Ready Architecture**: Modular monolith backend built with Spring Boot 3, PostgreSQL, Redis, and Flyway.
@@ -100,6 +102,28 @@ npm install
 npm run dev
 ```
 The web app is accessible at: `http://localhost:5173`
+
+---
+
+## 🚀 Frontend Vercel Deployment
+
+The frontend is ready for static deployment on [Vercel](https://vercel.com/) with zero backend coupling:
+
+### 1. Import Project to Vercel
+1. Push your repository to GitHub / GitLab.
+2. In the Vercel Dashboard, select **"New Project"** and import your repository.
+3. Set the **Root Directory** to `frontend`.
+4. Leave Framework Preset as **Vite**.
+
+### 2. Configure Environment Variables in Vercel
+In the Vercel project settings, set:
+- `VITE_API_BASE_URL`: The public HTTPS URL of your deployed Spring Boot backend (e.g., `https://api.yourdomain.com`).
+
+### 3. SPA Routing & Deployment
+- The SPA rewrite rule is pre-configured in `frontend/vercel.json` (`rewrites: [{"source": "/(.*)", "destination": "/index.html"}]`) to support client-side routing on page refresh.
+- Click **Deploy**. Vercel will run `npm run build` and publish the `dist/` directory.
+
+For full frontend documentation, see [frontend/README.md](file:///c:/Users/hp/OneDrive/Desktop/CodingFriend/frontend/README.md).
 
 ---
 

@@ -1,0 +1,41 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: ai-coding-mentor-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      repositories:
+        enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  mentor:
+    ollama:
+      base-url: http://localhost:11434
+      model: qwen2.5-coder:latest
+      timeout-seconds: 5
+  security:
+    jwt:
+      secret: testSecretKeyForUnitAndIntegrationTestingAtLeast256BitsLong12345
+      access-token-expiration-ms: 3600000
+      refresh-token-expiration-ms: 86400000

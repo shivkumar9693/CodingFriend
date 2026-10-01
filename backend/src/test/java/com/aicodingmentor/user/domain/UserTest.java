@@ -23,6 +23,18 @@ class UserTest {
     }
 
     @Test
+    @DisplayName("User full constructor initializes profile fields correctly")
+    void testUserFullConstructor() {
+        User user = new User("dev@example.com", "hash123", "Dev User", "Coding enthusiast", "devuser", UserRole.USER);
+
+        assertEquals("dev@example.com", user.getEmail());
+        assertEquals("Dev User", user.getFullName());
+        assertEquals("Coding enthusiast", user.getBio());
+        assertEquals("devuser", user.getGithubUsername());
+        assertEquals(UserRole.USER, user.getRole());
+    }
+
+    @Test
     @DisplayName("User onCreate callback populates timestamps and default role if missing")
     void testUserPrePersist() {
         User user = new User();

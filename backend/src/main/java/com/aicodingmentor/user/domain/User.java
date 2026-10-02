@@ -43,6 +43,27 @@ public class User {
     @Column(name = "github_username", length = 100)
     private String githubUsername;
 
+    @Column(name = "phone_number", length = 50)
+    private String phoneNumber;
+
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
+
+    @Column(name = "linkedin_url", length = 255)
+    private String linkedinUrl;
+
+    @Column(name = "contest_rating")
+    private Integer contestRating = 1200;
+
+    @Column(name = "duel_rating")
+    private Integer duelRating = 1200;
+
+    @Column(name = "current_streak")
+    private Integer currentStreak = 0;
+
+    @Column(name = "max_streak")
+    private Integer maxStreak = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -138,12 +159,68 @@ public class User {
         this.githubUsername = githubUsername;
     }
 
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getLinkedinUrl() {
+        return linkedinUrl;
+    }
+
+    public void setLinkedinUrl(String linkedinUrl) {
+        this.linkedinUrl = linkedinUrl;
+    }
+
     public UserRole getRole() {
         return role;
     }
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public Integer getContestRating() {
+        return contestRating != null ? contestRating : 1200;
+    }
+
+    public void setContestRating(Integer contestRating) {
+        this.contestRating = contestRating;
+    }
+
+    public Integer getDuelRating() {
+        return duelRating != null ? duelRating : 1200;
+    }
+
+    public void setDuelRating(Integer duelRating) {
+        this.duelRating = duelRating;
+    }
+
+    public Integer getCurrentStreak() {
+        return currentStreak != null ? currentStreak : 0;
+    }
+
+    public void setCurrentStreak(Integer currentStreak) {
+        this.currentStreak = currentStreak;
+    }
+
+    public Integer getMaxStreak() {
+        return maxStreak != null ? maxStreak : 0;
+    }
+
+    public void setMaxStreak(Integer maxStreak) {
+        this.maxStreak = maxStreak;
     }
 
     public Instant getCreatedAt() {

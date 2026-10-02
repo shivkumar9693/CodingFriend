@@ -70,7 +70,9 @@ public class SecurityConfig {
                                 "/api/problems",
                                 "/api/problems/**",
                                 "/api/v1/problems",
-                                "/api/v1/problems/**"
+                                "/api/v1/problems/**",
+                                "/api/leaderboard",
+                                "/api/v1/leaderboard"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/admin/**",
@@ -85,11 +87,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource(
+            @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,https://*.vercel.app}") String allowedOrigins
+    ) {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOriginPatterns(java.util.List.of("*"));
+        java.util.List<String> origins = java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        configuration.setAllowedOriginPatterns(origins.isEmpty() ? java.util.List.of("http://localhost:5173", "http://localhost:3000", "https://*.vercel.app") : origins);
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(java.util.List.of("*"));
+        configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", "X-Correlation-ID"));
+        configuration.setExposedHeaders(java.util.List.of("X-Correlation-ID", "Authorization"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

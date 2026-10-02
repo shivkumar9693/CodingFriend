@@ -69,6 +69,23 @@ public class SubmissionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/run")
+    @Operation(summary = "Execute code against public sample test cases without recording submission")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Code executed against public sample test cases",
+                    content = @Content(schema = @Schema(implementation = SubmissionResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error in execution payload"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "404", description = "Target problem not found")
+    })
+    public ResponseEntity<SubmissionResponse> runCode(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody CreateSubmissionRequest request
+    ) {
+        SubmissionResponse response = submissionService.runCode(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get submission by ID", description = "Retrieves a single submission by its unique identifier. Only the submitter or an ADMIN can view it.")
     @ApiResponses(value = {

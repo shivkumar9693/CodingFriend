@@ -26,19 +26,22 @@ public class SubmissionExecutionPlaceholderService {
     private final TestCaseService testCaseService;
     private final TestCaseEvaluator testCaseEvaluator;
     private final ObjectMapper objectMapper;
+    private final com.aicodingmentor.user.service.UserService userService;
 
     public SubmissionExecutionPlaceholderService(
             SubmissionRepository submissionRepository,
             com.aicodingmentor.problem.repository.ProblemRepository problemRepository,
             TestCaseService testCaseService,
             TestCaseEvaluator testCaseEvaluator,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            com.aicodingmentor.user.service.UserService userService
     ) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.testCaseService = testCaseService;
         this.testCaseEvaluator = testCaseEvaluator;
         this.objectMapper = objectMapper;
+        this.userService = userService;
     }
 
     /**
@@ -103,6 +106,12 @@ public class SubmissionExecutionPlaceholderService {
             }
 
             submissionRepository.save(submission);
+
+            // Record user daily streak and activity
+            if (userService != null && submission.getUserId() != null) {
+                userService.recordSubmissionActivity(submission.getUserId(), evalResult.verdict() == EvaluationVerdict.ACCEPTED);
+            }
+
             log.info("Submission [{}] evaluated with verdict [{}] ({}/{} passed, {}ms)",
                     submissionId, evalResult.verdict(), evalResult.testsPassed(), evalResult.totalTests(), evalResult.totalExecutionTimeMs());
 
@@ -111,5 +120,27 @@ public class SubmissionExecutionPlaceholderService {
             submission.markFailed("Evaluation engine error: " + ex.getMessage());
             submissionRepository.save(submission);
         }
+    }
+
+    /**
+     * Executes test case evaluation ONLY for public sample test cases without persisting a submission record.
+     */
+    public SubmissionEvaluationResult executePublicTestCases(UUID problemId, String sourceCode, String language) {
+        List<TestCase> publicTestCases = testCaseService.getPublicTestCasesForExecution(problemId);
+        String problemSlug = problemRepository.findById(problemId)
+                .map(com.aicodingmentor.problem.domain.Problem::getSlug)
+                .orElse(null);
+
+        log.info("Running public test cases (count: {}) for problem [{}] (lang: {})",
+                publicTestCases.size(), problemSlug, language);
+
+        return testCaseEvaluator.evaluate(
+                sourceCode,
+                language,
+                publicTestCases,
+                5000L,
+                256,
+                problemSlug
+        );
     }
 }

@@ -10,6 +10,10 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Search,
+  X,
+  Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { problemService } from '../../services/problemService';
 import { adminService } from '../../services/adminService';
@@ -30,6 +34,8 @@ export const AdminProblemsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -190,6 +196,35 @@ export const AdminProblemsPage: React.FC = () => {
     }
   };
 
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // Stats calculation
+  const totalCount = problems.length;
+  const easyCount = problems.filter((p) => p.difficulty === 'EASY').length;
+  const mediumCount = problems.filter((p) => p.difficulty === 'MEDIUM').length;
+  const hardCount = problems.filter((p) => p.difficulty === 'HARD').length;
+
+  const filteredProblems = problems.filter((p) => {
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !query ||
+      p.title.toLowerCase().includes(query) ||
+      p.slug.toLowerCase().includes(query) ||
+      (p.tags && p.tags.some((t) => t.toLowerCase().includes(query)));
+
+    const matchesDiff = difficultyFilter === 'ALL' || p.difficulty === difficultyFilter;
+    const matchesTag = !selectedTag || (p.tags && p.tags.includes(selectedTag));
+    return matchesSearch && matchesDiff && matchesTag;
+  });
+
+  const hasActiveFilters = Boolean(searchQuery.trim() || difficultyFilter !== 'ALL' || selectedTag);
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setDifficultyFilter('ALL');
+    setSelectedTag(null);
+  };
+
   return (
     <div className="page-container admin-problems-page">
       <div className="page-header flex-between">
@@ -225,12 +260,139 @@ export const AdminProblemsPage: React.FC = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="center-loader">
-          <LoadingSpinner message="Loading problems catalog..." />
+      <div className="admin-table-card">
+        {/* Enhanced Search & Filter Toolbar */}
+        <div className="admin-problem-toolbar-enhanced">
+          <div className="toolbar-top-row">
+            <div className="toolbar-search-box-enhanced">
+              <Search size={15} className="search-prefix-icon" />
+              <input
+                type="text"
+                placeholder="Search by title, slug, or concept tag (e.g. array, dp)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="toolbar-search-input-enhanced"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="btn-clear-search"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="toolbar-chips-group">
+              <div className="chips-label">
+                <SlidersHorizontal size={13} />
+                <span>Difficulty:</span>
+              </div>
+              
+              <button
+                type="button"
+                className={`filter-chip-pill chip-all ${difficultyFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setDifficultyFilter('ALL')}
+              >
+                <span>All</span>
+                <span className="chip-badge-count">{totalCount}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`filter-chip-pill chip-easy ${difficultyFilter === 'EASY' ? 'active' : ''}`}
+                onClick={() => setDifficultyFilter('EASY')}
+              >
+                <span className="chip-dot dot-easy" />
+                <span>Easy</span>
+                <span className="chip-badge-count">{easyCount}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`filter-chip-pill chip-medium ${difficultyFilter === 'MEDIUM' ? 'active' : ''}`}
+                onClick={() => setDifficultyFilter('MEDIUM')}
+              >
+                <span className="chip-dot dot-medium" />
+                <span>Medium</span>
+                <span className="chip-badge-count">{mediumCount}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`filter-chip-pill chip-hard ${difficultyFilter === 'HARD' ? 'active' : ''}`}
+                onClick={() => setDifficultyFilter('HARD')}
+              >
+                <span className="chip-dot dot-hard" />
+                <span>Hard</span>
+                <span className="chip-badge-count">{hardCount}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Active Status & Filter Summary Bar */}
+          <div className="toolbar-summary-bar">
+            <div className="summary-left-info">
+              <span className="text-sm font-semibold">
+                Showing <strong className="text-accent">{filteredProblems.length}</strong> of{' '}
+                <strong>{totalCount}</strong> problems
+              </span>
+
+              {selectedTag && (
+                <span className="active-filter-tag-pill">
+                  <Tag size={12} />
+                  <span>Tag: {selectedTag}</span>
+                  <button
+                    type="button"
+                    className="btn-remove-tag-filter"
+                    onClick={() => setSelectedTag(null)}
+                    title="Remove tag filter"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="btn-reset-filters-link"
+                onClick={resetAllFilters}
+              >
+                Reset All Filters
+              </button>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="admin-table-card">
+
+        {isLoading ? (
+          <div className="center-loader py-8">
+            <LoadingSpinner message="Loading problems catalog..." />
+          </div>
+        ) : filteredProblems.length === 0 ? (
+          <div className="panel-empty-substate py-10">
+            <Layers size={42} className="text-muted mx-auto mb-2" />
+            <h3 className="text-base font-bold text-white mb-1">No matching problems found</h3>
+            <p className="text-sm text-muted">
+              {hasActiveFilters
+                ? 'Try adjusting your search keywords or resetting your difficulty/tag filters.'
+                : 'Your catalog is currently empty. Click below to add the first challenge.'}
+            </p>
+            <div className="flex-align-gap justify-center mt-4">
+              {hasActiveFilters && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={resetAllFilters}>
+                  Reset Filters
+                </button>
+              )}
+              <button type="button" className="btn btn-primary btn-sm" onClick={openCreateModal}>
+                <Plus size={14} /> Create Problem
+              </button>
+            </div>
+          </div>
+        ) : (
           <div className="table-responsive">
             <table className="custom-table">
               <thead>
@@ -238,18 +400,23 @@ export const AdminProblemsPage: React.FC = () => {
                   <th>Title & Slug</th>
                   <th>Difficulty</th>
                   <th>Language</th>
-                  <th>Tags</th>
+                  <th>Concept Tags</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {problems.map((prob) => (
+                {filteredProblems.map((prob) => (
                   <tr key={prob.id}>
                     <td>
                       <div className="problem-cell-title">
-                        <Link to={`/problems/${prob.slug}`} className="font-bold text-accent">
+                        <button
+                          type="button"
+                          className="problem-title-btn"
+                          onClick={() => openEditModal(prob)}
+                          title="Click to edit problem details"
+                        >
                           {prob.title}
-                        </Link>
+                        </button>
                         <span className="slug-text">/{prob.slug}</span>
                       </div>
                     </td>
@@ -261,11 +428,21 @@ export const AdminProblemsPage: React.FC = () => {
                     </td>
                     <td>
                       <div className="tags-container-sm">
-                        {prob.tags?.map((t) => (
-                          <span key={t} className="tag-chip-sm">
-                            {t}
-                          </span>
-                        ))}
+                        {prob.tags && prob.tags.length > 0 ? (
+                          prob.tags.map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              className={`tag-chip-sm tag-chip-clickable ${selectedTag === t ? 'tag-chip-active' : ''}`}
+                              onClick={() => setSelectedTag(selectedTag === t ? null : t)}
+                              title={`Filter by tag: ${t}`}
+                            >
+                              {t}
+                            </button>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted">No tags</span>
+                        )}
                       </div>
                     </td>
                     <td className="text-right">
@@ -275,23 +452,23 @@ export const AdminProblemsPage: React.FC = () => {
                           className="btn-action-testcases"
                           title="Manage Public & Hidden Test Cases"
                         >
-                          <FlaskConical size={15} /> Test Cases
+                          <FlaskConical size={14} /> Test Cases
                         </Link>
                         <button
                           type="button"
-                          className="btn-icon"
+                          className="btn-action-edit"
                           onClick={() => openEditModal(prob)}
-                          title="Edit Problem"
+                          title="Edit Problem Details"
                         >
-                          <Edit2 size={15} />
+                          <Edit2 size={13} /> Edit
                         </button>
                         <button
                           type="button"
-                          className="btn-icon btn-icon-danger"
+                          className="btn-action-delete"
                           onClick={() => handleDelete(prob.id, prob.title)}
                           title="Delete Problem"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -300,32 +477,32 @@ export const AdminProblemsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
 
-          <div className="pagination-bar">
-            <span className="pagination-info">
-              Showing page {page + 1} of {totalPages}
-            </span>
-            <div className="pagination-actions">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={page === 0}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft size={16} /> Previous
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage(page + 1)}
-              >
-                Next <ChevronRight size={16} />
-              </button>
-            </div>
+        <div className="pagination-bar">
+          <span className="pagination-info">
+            Showing page {page + 1} of {totalPages}
+          </span>
+          <div className="pagination-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+            >
+              Next <ChevronRight size={16} />
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Create / Edit Problem Modal */}
       <Modal

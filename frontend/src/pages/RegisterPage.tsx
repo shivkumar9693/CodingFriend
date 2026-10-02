@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Lock, Mail, User as UserIcon, ArrowRight } from 'lucide-react';
+import { UserPlus, Lock, Mail, User as UserIcon, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -14,6 +14,8 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState<Array<{ field: string; message: string }>>([]);
@@ -58,10 +60,10 @@ export const RegisterPage: React.FC = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-icon-circle">
-            <UserPlus size={24} />
+            <UserPlus size={20} />
           </div>
           <h1 className="auth-title">Create Account</h1>
-          <p className="auth-subtitle">Join CodingFriend and level up your Java problem-solving with SocraBuddy</p>
+          <p className="auth-subtitle">Join CodingFriend and master algorithmic problem solving with SocraBuddy AI Mentor</p>
         </div>
 
         <ErrorMessage
@@ -76,12 +78,12 @@ export const RegisterPage: React.FC = () => {
               Full Name / Display Handle
             </label>
             <div className="input-icon-wrapper">
-              <UserIcon className="input-icon" size={18} />
+              <UserIcon className="input-icon" size={16} />
               <input
                 id="fullName"
                 type="text"
                 className="form-input has-icon"
-                placeholder="Alex Mercer"
+                placeholder="Your Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -95,7 +97,7 @@ export const RegisterPage: React.FC = () => {
               Email Address
             </label>
             <div className="input-icon-wrapper">
-              <Mail className="input-icon" size={18} />
+              <Mail className="input-icon" size={16} />
               <input
                 id="email"
                 type="email"
@@ -115,10 +117,10 @@ export const RegisterPage: React.FC = () => {
               Password (min. 8 characters)
             </label>
             <div className="input-icon-wrapper">
-              <Lock className="input-icon" size={18} />
+              <Lock className="input-icon" size={16} />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-input has-icon"
                 placeholder="••••••••••••"
                 value={password}
@@ -127,6 +129,14 @@ export const RegisterPage: React.FC = () => {
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
           </div>
 
@@ -135,10 +145,10 @@ export const RegisterPage: React.FC = () => {
               Confirm Password
             </label>
             <div className="input-icon-wrapper">
-              <Lock className="input-icon" size={18} />
+              <Lock className="input-icon" size={16} />
               <input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 className="form-input has-icon"
                 placeholder="••••••••••••"
                 value={confirmPassword}
@@ -147,12 +157,20 @@ export const RegisterPage: React.FC = () => {
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary btn-block submit-btn"
+            className="submit-btn"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -160,7 +178,7 @@ export const RegisterPage: React.FC = () => {
             ) : (
               <>
                 <span>Create Free Account</span>
-                <ArrowRight size={18} />
+                <ArrowRight size={16} />
               </>
             )}
           </button>

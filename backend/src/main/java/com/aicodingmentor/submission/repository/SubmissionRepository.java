@@ -28,8 +28,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     long countByUserIdAndVerdict(UUID userId, EvaluationVerdict verdict);
 
-    @Query("SELECT COUNT(DISTINCT s.problemId) FROM Submission s WHERE s.userId = :userId AND s.verdict = 'ACCEPTED'")
+    @Query("SELECT COUNT(DISTINCT s.problemId) FROM Submission s WHERE s.userId = :userId AND s.verdict = com.aicodingmentor.execution.model.EvaluationVerdict.ACCEPTED")
     long countDistinctProblemsSolvedByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(DISTINCT s.problemId) FROM Submission s, Problem p WHERE s.problemId = p.id AND s.userId = :userId AND s.verdict = com.aicodingmentor.execution.model.EvaluationVerdict.ACCEPTED AND p.difficulty = :difficulty")
+    long countDistinctProblemsSolvedByUserIdAndDifficulty(@Param("userId") UUID userId, @Param("difficulty") com.aicodingmentor.problem.domain.ProblemDifficulty difficulty);
 
     @Query("SELECT COUNT(DISTINCT s.problemId) FROM Submission s WHERE s.userId = :userId")
     long countDistinctProblemsAttemptedByUserId(@Param("userId") UUID userId);

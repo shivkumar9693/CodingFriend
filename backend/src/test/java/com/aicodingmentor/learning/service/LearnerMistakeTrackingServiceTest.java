@@ -34,13 +34,24 @@ class LearnerMistakeTrackingServiceTest {
     @Mock
     private SubmissionRepository submissionRepository;
 
+    @Mock
+    private com.aicodingmentor.problem.repository.ProblemRepository problemRepository;
+
+    @Mock
+    private com.aicodingmentor.contest.repository.ContestParticipantRepository contestParticipantRepository;
+
     private LearnerMistakeTrackingServiceImpl trackingService;
     private UUID userId;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        trackingService = new LearnerMistakeTrackingServiceImpl(mistakeRepository, submissionRepository);
+        trackingService = new LearnerMistakeTrackingServiceImpl(
+                mistakeRepository,
+                submissionRepository,
+                problemRepository,
+                contestParticipantRepository
+        );
     }
 
     @Test

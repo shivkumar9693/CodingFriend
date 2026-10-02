@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, Lock, Mail, ArrowRight } from 'lucide-react';
+import { LogIn, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -13,6 +13,7 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState<Array<{ field: string; message: string }>>([]);
@@ -55,10 +56,10 @@ export const LoginPage: React.FC = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-icon-circle">
-            <LogIn size={24} />
+            <LogIn size={20} />
           </div>
           <h1 className="auth-title">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to continue your Java algorithm learning journey</p>
+          <p className="auth-subtitle">Sign in to continue your algorithmic problem-solving journey with SocraBuddy</p>
         </div>
 
         <ErrorMessage
@@ -73,7 +74,7 @@ export const LoginPage: React.FC = () => {
               Email Address
             </label>
             <div className="input-icon-wrapper">
-              <Mail className="input-icon" size={18} />
+              <Mail className="input-icon" size={16} />
               <input
                 id="email"
                 type="email"
@@ -93,10 +94,10 @@ export const LoginPage: React.FC = () => {
               Password
             </label>
             <div className="input-icon-wrapper">
-              <Lock className="input-icon" size={18} />
+              <Lock className="input-icon" size={16} />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-input has-icon"
                 placeholder="••••••••••••"
                 value={password}
@@ -105,20 +106,28 @@ export const LoginPage: React.FC = () => {
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary btn-block submit-btn"
+            className="submit-btn"
             disabled={isLoading}
           >
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
               <>
-                <span>Sign In</span>
-                <ArrowRight size={18} />
+                <span>Sign In to CodingFriend</span>
+                <ArrowRight size={16} />
               </>
             )}
           </button>

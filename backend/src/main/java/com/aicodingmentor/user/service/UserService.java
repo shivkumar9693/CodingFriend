@@ -10,4 +10,8 @@ public interface UserService {
     UserProfileResponse getProfile(UUID userId);
 
     UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request);
+
+    com.aicodingmentor.user.dto.ActivityHeatmapDto getActivityHeatmap(UUID userId);
+
+    void recordSubmissionActivity(UUID userId, boolean isSolved);
 }

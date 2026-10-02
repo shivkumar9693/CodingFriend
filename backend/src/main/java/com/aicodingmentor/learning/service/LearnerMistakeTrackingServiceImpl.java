@@ -26,13 +26,19 @@ public class LearnerMistakeTrackingServiceImpl implements LearnerMistakeTracking
 
     private final LearnerMistakeRepository mistakeRepository;
     private final SubmissionRepository submissionRepository;
+    private final com.aicodingmentor.problem.repository.ProblemRepository problemRepository;
+    private final com.aicodingmentor.contest.repository.ContestParticipantRepository contestParticipantRepository;
 
     public LearnerMistakeTrackingServiceImpl(
             LearnerMistakeRepository mistakeRepository,
-            SubmissionRepository submissionRepository
+            SubmissionRepository submissionRepository,
+            com.aicodingmentor.problem.repository.ProblemRepository problemRepository,
+            com.aicodingmentor.contest.repository.ContestParticipantRepository contestParticipantRepository
     ) {
         this.mistakeRepository = mistakeRepository;
         this.submissionRepository = submissionRepository;
+        this.problemRepository = problemRepository;
+        this.contestParticipantRepository = contestParticipantRepository;
     }
 
     @Override
@@ -73,6 +79,18 @@ public class LearnerMistakeTrackingServiceImpl implements LearnerMistakeTracking
         long problemsSolved = submissionRepository.countDistinctProblemsSolvedByUserId(userId);
         long problemsAttempted = submissionRepository.countDistinctProblemsAttemptedByUserId(userId);
 
+        long easySolved = submissionRepository.countDistinctProblemsSolvedByUserIdAndDifficulty(userId, com.aicodingmentor.problem.domain.ProblemDifficulty.EASY);
+        long totalEasy = problemRepository.countByDifficulty(com.aicodingmentor.problem.domain.ProblemDifficulty.EASY);
+
+        long mediumSolved = submissionRepository.countDistinctProblemsSolvedByUserIdAndDifficulty(userId, com.aicodingmentor.problem.domain.ProblemDifficulty.MEDIUM);
+        long totalMedium = problemRepository.countByDifficulty(com.aicodingmentor.problem.domain.ProblemDifficulty.MEDIUM);
+
+        long hardSolved = submissionRepository.countDistinctProblemsSolvedByUserIdAndDifficulty(userId, com.aicodingmentor.problem.domain.ProblemDifficulty.HARD);
+        long totalHard = problemRepository.countByDifficulty(com.aicodingmentor.problem.domain.ProblemDifficulty.HARD);
+
+        long totalProblems = problemRepository.count();
+        long contestsAttended = contestParticipantRepository.countByUserId(userId);
+
         double accuracy = totalSubmissions > 0
                 ? Math.round(((double) totalAccepted / totalSubmissions * 100.0) * 100.0) / 100.0
                 : 0.0;
@@ -108,6 +126,14 @@ public class LearnerMistakeTrackingServiceImpl implements LearnerMistakeTracking
                 accuracy,
                 problemsSolved,
                 problemsAttempted,
+                easySolved,
+                totalEasy,
+                mediumSolved,
+                totalMedium,
+                hardSolved,
+                totalHard,
+                totalProblems,
+                contestsAttended,
                 averageAttempts,
                 topMistake,
                 breakdown,

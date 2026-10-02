@@ -16,6 +16,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { submissionService } from '../services/submissionService';
+import { mentorService } from '../services/mentorService';
 import { SubmissionResponse, SubmissionHintResponse, TestCaseEvaluationResult } from '../types/submission';
 
 export interface AiMentorPanelProps {
@@ -44,6 +45,23 @@ const MISTAKE_LABELS: Record<string, { label: string; desc: string }> = {
   TIME_LIMIT_EXCEEDED: { label: 'Time Limit Exceeded', desc: 'Infinite loop or execution timeout exceeded' },
 };
 
+const mapLevelToHintEnum = (
+  lvl: number
+): 'LEVEL_1_NUDGE' | 'LEVEL_2_CONCEPT' | 'LEVEL_3_ALGORITHM' | 'LEVEL_4_TARGETED' => {
+  switch (lvl) {
+    case 1:
+      return 'LEVEL_1_NUDGE';
+    case 2:
+      return 'LEVEL_2_CONCEPT';
+    case 3:
+      return 'LEVEL_3_ALGORITHM';
+    case 4:
+    case 5:
+    default:
+      return 'LEVEL_4_TARGETED';
+  }
+};
+
 export const AiMentorPanel: React.FC<AiMentorPanelProps> = ({
   submission,
   onOpenFullModal,
@@ -66,20 +84,65 @@ export const AiMentorPanel: React.FC<AiMentorPanelProps> = ({
   const failedTest = testCasesList.find((tc) => !tc.passed);
 
   const fetchHintForLevel = useCallback(async (level: number) => {
-    if (!submission.id) return;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await submissionService.getSubmissionHint(submission.id, level);
-      setHint(response);
-      setCurrentLevel(response.hintLevel);
+      if (submission.id) {
+        try {
+          const response = await submissionService.getSubmissionHint(submission.id, level);
+          setHint(response);
+          setCurrentLevel(response.hintLevel);
+          return;
+        } catch (subErr: any) {
+          const isNotFound = subErr?.response?.status === 404 || subErr?.status === 404;
+          const isProgressionGuard =
+            subErr?.response?.status === 400 &&
+            (subErr?.response?.data?.message?.includes('Progression') ||
+              subErr?.response?.data?.message?.includes('progression') ||
+              subErr?.message?.includes('Progression'));
+
+          if (isProgressionGuard) {
+            setError(
+              'Progression Constraint: Please explore foundational hint tiers (Levels 1-3) before unlocking detailed explanations (Level 4) or solution guidance (Level 5).'
+            );
+            return;
+          }
+
+          if (!isNotFound) {
+            throw subErr;
+          }
+        }
+      }
+
+      // Seamless fallback to SocraBuddy general problem hint service
+      if (submission.problemId && submission.sourceCode) {
+        const mentorRes = await mentorService.getHint({
+          problemId: submission.problemId,
+          sourceCode: submission.sourceCode,
+          hintLevel: mapLevelToHintEnum(level),
+          lastErrorMessage: submission.errorMessage || undefined,
+        });
+        const hintText = mentorRes.socraticQuestion
+          ? `${mentorRes.guidance} ${mentorRes.socraticQuestion}`
+          : mentorRes.guidance || 'Review your logic carefully.';
+        setHint({
+          mistakeType: submission.verdict || 'LOGICAL_ERROR',
+          hintLevel: level,
+          hint: hintText,
+          concept: mentorRes.conceptKeywords?.length ? mentorRes.conceptKeywords.join(', ') : undefined,
+          revealsSolution: level === 5,
+        });
+        setCurrentLevel(level);
+      } else {
+        throw new Error('Problem context is missing to generate Socratic hint.');
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'AI mentor service is temporarily unavailable.';
       setError(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [submission.id]);
+  }, [submission]);
 
   // Load level 1 hint on mount if submission is not ACCEPTED
   useEffect(() => {

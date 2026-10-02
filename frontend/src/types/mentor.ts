@@ -50,3 +50,19 @@ export interface SocraBuddyDiagnosisResponse {
   recommendedAction: string;
   recommendedHintLevel: HintLevel;
 }
+
+export interface InlineAssistRequest {
+  problemId: string;
+  sourceCode: string;
+  cursorLine: number;
+  language?: string;
+}
+
+export interface InlineAssistResponse {
+  nudgeType: string;
+  inlineMessage: string;
+  targetLine: number;
+  revealsSolution: boolean;
+  modelName: string;
+}
+

@@ -16,6 +16,10 @@ export const submissionService = {
     return apiClient.post<SubmissionResponse>('/api/submissions', data);
   },
 
+  async runCode(data: CreateSubmissionRequest): Promise<SubmissionResponse> {
+    return apiClient.post<SubmissionResponse>('/api/submissions/run', data);
+  },
+
   async getSubmissionById(id: string): Promise<SubmissionResponse> {
     return apiClient.get<SubmissionResponse>(`/api/submissions/${id}`);
   },

@@ -59,8 +59,13 @@ public record SubmissionResponse(
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static SubmissionResponse from(Submission submission) {
+        UUID subId = submission.getId() != null ? submission.getId() : UUID.randomUUID();
+        Instant now = Instant.now();
+        Instant created = submission.getCreatedAt() != null ? submission.getCreatedAt() : now;
+        Instant updated = submission.getUpdatedAt() != null ? submission.getUpdatedAt() : now;
+
         return new SubmissionResponse(
-                submission.getId(),
+                subId,
                 submission.getUserId(),
                 submission.getProblemId(),
                 submission.getLanguage(),
@@ -72,8 +77,8 @@ public record SubmissionResponse(
                 submission.getExecutionTimeMs(),
                 sanitizeEvaluationDetails(submission.getEvaluationDetails()),
                 submission.getErrorMessage(),
-                submission.getCreatedAt(),
-                submission.getUpdatedAt()
+                created,
+                updated
         );
     }
 

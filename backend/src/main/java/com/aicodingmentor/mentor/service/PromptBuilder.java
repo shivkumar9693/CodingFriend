@@ -53,6 +53,15 @@ public interface PromptBuilder {
     String buildContextualPrompt(AiPromptContext context);
 
     /**
+     * Constructs a real-time Socratic inline assist prompt for Monaco Editor ghost hints.
+     *
+     * @param problem coding problem entity
+     * @param request student inline assist request
+     * @return sanitized user prompt for LLM
+     */
+    String buildInlineAssistPrompt(Problem problem, com.aicodingmentor.mentor.dto.InlineAssistRequest request);
+
+    /**
      * Returns the active prompt template version.
      *
      * @return version string (e.g., "v1.4.0-socratic-context")

@@ -94,4 +94,17 @@ public class UserController {
                 mistakeTrackingService.getLearnerStatistics(principal.getId());
         return ResponseEntity.ok(statistics);
     }
+
+    @GetMapping("/me/heatmap")
+    @Operation(summary = "Get current learner's 365-day activity heatmap and streak stats", description = "Retrieves daily submission volume and streaks for visualization")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Heatmap retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - Missing or invalid JWT token")
+    })
+    public ResponseEntity<com.aicodingmentor.user.dto.ActivityHeatmapDto> getLearnerHeatmap(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        com.aicodingmentor.user.dto.ActivityHeatmapDto heatmap = userService.getActivityHeatmap(principal.getId());
+        return ResponseEntity.ok(heatmap);
+    }
 }

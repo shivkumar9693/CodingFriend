@@ -46,6 +46,7 @@ public class SubmissionExecutionConsumer {
     private final SubmissionEventProducer eventProducer;
     private final ObjectMapper objectMapper;
     private final CacheManager cacheManager;
+    private final com.aicodingmentor.user.service.UserService userService;
 
     public SubmissionExecutionConsumer(
             SubmissionRepository submissionRepository,
@@ -54,7 +55,8 @@ public class SubmissionExecutionConsumer {
             TestCaseEvaluator testCaseEvaluator,
             SubmissionEventProducer eventProducer,
             ObjectMapper objectMapper,
-            CacheManager cacheManager
+            CacheManager cacheManager,
+            com.aicodingmentor.user.service.UserService userService
     ) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
@@ -63,6 +65,7 @@ public class SubmissionExecutionConsumer {
         this.eventProducer = eventProducer;
         this.objectMapper = objectMapper;
         this.cacheManager = cacheManager;
+        this.userService = userService;
     }
 
     @RetryableTopic(
@@ -146,6 +149,15 @@ public class SubmissionExecutionConsumer {
             }
         } catch (Exception ex) {
             log.warn("Failed to evict submission-status cache for [{}]: {}", saved.getId(), ex.getMessage());
+        }
+
+        // Record user daily streak and activity
+        if (userService != null && saved.getUserId() != null) {
+            try {
+                userService.recordSubmissionActivity(saved.getUserId(), saved.getVerdict() == EvaluationVerdict.ACCEPTED);
+            } catch (Exception ex) {
+                log.warn("Failed to record submission activity for user [{}]: {}", saved.getUserId(), ex.getMessage());
+            }
         }
 
         // Publish to execution-results topic

@@ -21,7 +21,11 @@ public class DriverHarnessRegistry {
         registerTwoSum();
         registerValidPalindrome();
         registerContainsDuplicate();
+        registerValidAnagram();
+        registerBuySellStock();
+        registerMaxSubarray();
         registerReverseString();
+        registerFizzBuzz();
     }
 
     public ProblemTemplate getTemplate(String slug, SupportedLanguage language) {
@@ -48,7 +52,35 @@ public class DriverHarnessRegistry {
         return switch (language) {
             case PYTHON -> new ProblemTemplate(
                     "class Solution:\n    # Write your solution here\n    pass\n",
-                    "{{USER_CODE}}\n"
+                    """
+                    import sys, json
+
+                    {{USER_CODE}}
+
+                    if __name__ == '__main__':
+                        raw = sys.stdin.read().strip()
+                        if raw:
+                            lines = [l.strip() for l in raw.split('\\n') if l.strip()]
+                            sol = Solution()
+                            methods = [m for m in dir(sol) if not m.startswith('_') and callable(getattr(sol, m))]
+                            if methods:
+                                target = getattr(sol, methods[0])
+                                import inspect
+                                params = list(inspect.signature(target).parameters.values())
+                                args = []
+                                for idx, p in enumerate(params):
+                                    if idx < len(lines):
+                                        val = lines[idx]
+                                        try:
+                                            args.append(json.loads(val))
+                                        except Exception:
+                                            args.append(val)
+                                res = target(*args)
+                                if res is not None:
+                                    print(json.dumps(res))
+                                elif args:
+                                    print(json.dumps(args[0]))
+                    """
             );
             case CPP -> new ProblemTemplate(
                     "#include <iostream>\n#include <vector>\nusing namespace std;\n\nclass Solution {\npublic:\n    // Write your solution here\n};\n",
@@ -56,11 +88,182 @@ public class DriverHarnessRegistry {
             );
             case JAVASCRIPT -> new ProblemTemplate(
                     "/**\n * Write your solution here\n */\n",
-                    "{{USER_CODE}}\n"
+                    """
+                    const fs = require('fs');
+
+                    {{USER_CODE}}
+
+                    const raw = fs.readFileSync(0, 'utf-8').trim();
+                    if (raw) {
+                        const lines = raw.split('\\n').map(l => l.trim()).filter(Boolean);
+                        const fnNames = Object.keys(global).filter(k => typeof global[k] === 'function' && k !== 'clearImmediate' && k !== 'clearInterval' && k !== 'clearTimeout');
+                        // Find solution function or invoke directly
+                        const args = lines.map(l => {
+                            try { return JSON.parse(l); } catch(e) { return l; }
+                        });
+                        let fn = (typeof solution !== 'undefined' ? solution : null);
+                        if (!fn) {
+                            for (let key in this) {
+                                if (typeof this[key] === 'function') { fn = this[key]; break; }
+                            }
+                        }
+                        if (fn) {
+                            const res = fn(...args);
+                            if (res !== undefined) {
+                                console.log(JSON.stringify(res));
+                            } else if (args.length > 0) {
+                                console.log(JSON.stringify(args[0]));
+                            }
+                        }
+                    }
+                    """
             );
             case JAVA -> new ProblemTemplate(
                     "class Solution {\n    // Write your solution here\n}\n",
-                    "{{USER_CODE}}\n"
+                    """
+                    import java.util.*;
+                    import java.util.stream.*;
+                    import java.lang.reflect.*;
+
+                    {{USER_CODE}}
+
+                    public class MainDriver {
+                        public static void main(String[] args) {
+                            try {
+                                Scanner sc = new Scanner(System.in);
+                                List<String> inputLines = new ArrayList<>();
+                                while (sc.hasNextLine()) {
+                                    String line = sc.nextLine();
+                                    if (!line.trim().isEmpty()) {
+                                        inputLines.add(line.trim());
+                                    }
+                                }
+
+                                Class<?> clazz = Class.forName("Solution");
+                                Object instance = clazz.getDeclaredConstructor().newInstance();
+                                Method[] methods = clazz.getDeclaredMethods();
+                                Method target = null;
+                                for (Method m : methods) {
+                                    if (Modifier.isPublic(m.getModifiers()) && !m.getName().equals("main")) {
+                                        target = m;
+                                        break;
+                                    }
+                                }
+                                if (target == null && methods.length > 0) target = methods[0];
+                                if (target == null) return;
+
+                                target.setAccessible(true);
+                                Class<?>[] paramTypes = target.getParameterTypes();
+                                Object[] invokeArgs = new Object[paramTypes.length];
+
+                                for (int i = 0; i < paramTypes.length; i++) {
+                                    String line = i < inputLines.size() ? inputLines.get(i) : "";
+                                    invokeArgs[i] = parseArgument(line, paramTypes[i]);
+                                }
+
+                                Object result = target.invoke(instance, invokeArgs);
+
+                                if (target.getReturnType() == void.class && invokeArgs.length > 0) {
+                                    printFormatted(invokeArgs[0]);
+                                } else {
+                                    printFormatted(result);
+                                }
+                            } catch (Throwable t) {
+                                Throwable cause = t.getCause() != null ? t.getCause() : t;
+                                cause.printStackTrace();
+                            }
+                        }
+
+                        private static Object parseArgument(String raw, Class<?> type) {
+                            if (raw == null) return null;
+                            String trimmed = raw.trim();
+
+                            if (type == int[].class) {
+                                String clean = trimmed.replace("[", "").replace("]", "").trim();
+                                if (clean.isEmpty()) return new int[0];
+                                String[] tokens = clean.split("\\\\s*,\\\\s*|\\\\s+");
+                                int[] arr = new int[tokens.length];
+                                for (int i = 0; i < tokens.length; i++) {
+                                    arr[i] = Integer.parseInt(tokens[i].trim());
+                                }
+                                return arr;
+                            } else if (type == char[].class) {
+                                String clean = trimmed.replace("[", "").replace("]", "").replace("\\\"", "").replace("'", "").trim();
+                                if (clean.isEmpty()) return new char[0];
+                                String[] tokens = clean.split("\\\\s*,\\\\s*|\\\\s+");
+                                char[] arr = new char[tokens.length];
+                                for (int i = 0; i < tokens.length; i++) {
+                                    arr[i] = tokens[i].trim().charAt(0);
+                                }
+                                return arr;
+                            } else if (type == String[].class) {
+                                String clean = trimmed.replace("[", "").replace("]", "").trim();
+                                if (clean.isEmpty()) return new String[0];
+                                String[] tokens = clean.split("\\\\s*,\\\\s*");
+                                String[] arr = new String[tokens.length];
+                                for (int i = 0; i < tokens.length; i++) {
+                                    arr[i] = tokens[i].replace("\\\"", "").trim();
+                                }
+                                return arr;
+                            } else if (type == int.class || type == Integer.class) {
+                                return Integer.parseInt(trimmed);
+                            } else if (type == long.class || type == Long.class) {
+                                return Long.parseLong(trimmed);
+                            } else if (type == double.class || type == Double.class) {
+                                return Double.parseDouble(trimmed);
+                            } else if (type == boolean.class || type == Boolean.class) {
+                                return Boolean.parseBoolean(trimmed);
+                            } else if (type == String.class) {
+                                if (trimmed.startsWith("\\\"") && trimmed.endsWith("\\\"") && trimmed.length() >= 2) {
+                                    return trimmed.substring(1, trimmed.length() - 1);
+                                }
+                                return trimmed;
+                            } else if (List.class.isAssignableFrom(type)) {
+                                String clean = trimmed.replace("[", "").replace("]", "").trim();
+                                if (clean.isEmpty()) return new ArrayList<>();
+                                String[] tokens = clean.split("\\\\s*,\\\\s*");
+                                List<String> list = new ArrayList<>();
+                                for (String token : tokens) {
+                                    list.add(token.replace("\\\"", "").trim());
+                                }
+                                return list;
+                            }
+                            return trimmed;
+                        }
+
+                        private static void printFormatted(Object obj) {
+                            if (obj == null) return;
+                            if (obj instanceof int[] arr) {
+                                System.out.println(Arrays.toString(arr));
+                            } else if (obj instanceof char[] arr) {
+                                StringBuilder sb = new StringBuilder("[");
+                                for (int i = 0; i < arr.length; i++) {
+                                    sb.append("\\\"").append(arr[i]).append("\\\"");
+                                    if (i < arr.length - 1) sb.append(", ");
+                                }
+                                sb.append("]");
+                                System.out.println(sb.toString());
+                            } else if (obj instanceof Object[] arr) {
+                                System.out.println(Arrays.toString(arr));
+                            } else if (obj instanceof List<?> list) {
+                                StringBuilder sb = new StringBuilder("[");
+                                for (int i = 0; i < list.size(); i++) {
+                                    Object item = list.get(i);
+                                    if (item instanceof String) {
+                                        sb.append("\\\"").append(item).append("\\\"");
+                                    } else {
+                                        sb.append(item);
+                                    }
+                                    if (i < list.size() - 1) sb.append(", ");
+                                }
+                                sb.append("]");
+                                System.out.println(sb.toString());
+                            } else {
+                                System.out.println(obj);
+                            }
+                        }
+                    }
+                    """
             );
         };
     }
@@ -590,5 +793,242 @@ public class DriverHarnessRegistry {
         ));
 
         templatesBySlug.put("reverse-string", map);
+    }
+
+    private void registerFizzBuzz() {
+        Map<SupportedLanguage, ProblemTemplate> map = new HashMap<>();
+
+        // JAVA
+        map.put(SupportedLanguage.JAVA, new ProblemTemplate(
+                """
+                class Solution {
+                    public List<String> fizzBuzz(int n) {
+                        // Write your solution here
+                        return List.of();
+                    }
+                }
+                """,
+                """
+                import java.util.*;
+
+                {{USER_CODE}}
+
+                public class MainDriver {
+                    public static void main(String[] args) {
+                        Scanner sc = new Scanner(System.in);
+                        if (!sc.hasNextInt()) return;
+                        int n = sc.nextInt();
+                        List<String> res = new Solution().fizzBuzz(n);
+                        StringBuilder sb = new StringBuilder("[");
+                        for (int i = 0; i < res.size(); i++) {
+                            sb.append("\\\"").append(res.get(i)).append("\\\"");
+                            if (i < res.size() - 1) sb.append(", ");
+                        }
+                        sb.append("]");
+                        System.out.println(sb.toString());
+                    }
+                }
+                """
+        ));
+
+        // PYTHON
+        map.put(SupportedLanguage.PYTHON, new ProblemTemplate(
+                """
+                class Solution:
+                    def fizzBuzz(self, n: int) -> list[str]:
+                        # Write your solution here
+                        return []
+                """,
+                """
+                import sys, json
+
+                {{USER_CODE}}
+
+                if __name__ == '__main__':
+                    line = sys.stdin.read().strip()
+                    if line:
+                        n = int(line)
+                        res = Solution().fizzBuzz(n)
+                        print(json.dumps(res))
+                """
+        ));
+
+        // JAVASCRIPT
+        map.put(SupportedLanguage.JAVASCRIPT, new ProblemTemplate(
+                """
+                /**
+                 * @param {number} n
+                 * @return {string[]}
+                 */
+                var fizzBuzz = function(n) {
+                    // Write your solution here
+                    return [];
+                };
+                """,
+                """
+                const fs = require('fs');
+
+                {{USER_CODE}}
+
+                const input = fs.readFileSync(0, 'utf-8').trim();
+                if (input) {
+                    const n = parseInt(input, 10);
+                    const res = fizzBuzz(n);
+                    console.log(JSON.stringify(res));
+                }
+                """
+        ));
+
+        // C++
+        map.put(SupportedLanguage.CPP, new ProblemTemplate(
+                """
+                #include <vector>
+                #include <string>
+                using namespace std;
+
+                class Solution {
+                public:
+                    vector<string> fizzBuzz(int n) {
+                        // Write your solution here
+                        return {};
+                    }
+                };
+                """,
+                """
+                #include <iostream>
+                #include <vector>
+                #include <string>
+                using namespace std;
+
+                {{USER_CODE}}
+
+                int main() {
+                    int n;
+                    if (cin >> n) {
+                        Solution sol;
+                        vector<string> res = sol.fizzBuzz(n);
+                        cout << "[";
+                        for (size_t i = 0; i < res.size(); i++) {
+                            cout << "\\"" << res[i] << "\\"" << (i + 1 < res.size() ? ", " : "");
+                        }
+                        cout << "]" << endl;
+                    }
+                    return 0;
+                }
+                """
+        ));
+
+        templatesBySlug.put("fizz-buzz", map);
+    }
+
+    private void registerValidAnagram() {
+        Map<SupportedLanguage, ProblemTemplate> map = new HashMap<>();
+
+        // JAVA
+        map.put(SupportedLanguage.JAVA, new ProblemTemplate(
+                """
+                class Solution {
+                    public boolean isAnagram(String s, String t) {
+                        // Write your solution here
+                        return false;
+                    }
+                }
+                """,
+                """
+                import java.util.*;
+
+                {{USER_CODE}}
+
+                public class MainDriver {
+                    public static void main(String[] args) {
+                        Scanner sc = new Scanner(System.in);
+                        if (!sc.hasNextLine()) return;
+                        String s = sc.nextLine().trim().replace("\\\"", "");
+                        if (!sc.hasNextLine()) return;
+                        String t = sc.nextLine().trim().replace("\\\"", "");
+                        boolean res = new Solution().isAnagram(s, t);
+                        System.out.println(res);
+                    }
+                }
+                """
+        ));
+
+        templatesBySlug.put("valid-anagram", map);
+    }
+
+    private void registerBuySellStock() {
+        Map<SupportedLanguage, ProblemTemplate> map = new HashMap<>();
+
+        // JAVA
+        map.put(SupportedLanguage.JAVA, new ProblemTemplate(
+                """
+                class Solution {
+                    public int maxProfit(int[] prices) {
+                        // Write your solution here
+                        return 0;
+                    }
+                }
+                """,
+                """
+                import java.util.*;
+
+                {{USER_CODE}}
+
+                public class MainDriver {
+                    public static void main(String[] args) {
+                        Scanner sc = new Scanner(System.in);
+                        if (!sc.hasNextLine()) return;
+                        String line = sc.nextLine().trim().replace("[", "").replace("]", "").trim();
+                        String[] tokens = line.split("\\\\s*,\\\\s*|\\\\s+");
+                        int[] prices = new int[tokens.length];
+                        for (int i = 0; i < tokens.length; i++) {
+                            prices[i] = Integer.parseInt(tokens[i]);
+                        }
+                        int res = new Solution().maxProfit(prices);
+                        System.out.println(res);
+                    }
+                }
+                """
+        ));
+
+        templatesBySlug.put("best-time-to-buy-and-sell-stock", map);
+    }
+
+    private void registerMaxSubarray() {
+        Map<SupportedLanguage, ProblemTemplate> map = new HashMap<>();
+
+        // JAVA
+        map.put(SupportedLanguage.JAVA, new ProblemTemplate(
+                """
+                class Solution {
+                    public int maxSubArray(int[] nums) {
+                        // Write your solution here
+                        return 0;
+                    }
+                }
+                """,
+                """
+                import java.util.*;
+
+                {{USER_CODE}}
+
+                public class MainDriver {
+                    public static void main(String[] args) {
+                        Scanner sc = new Scanner(System.in);
+                        if (!sc.hasNextLine()) return;
+                        String line = sc.nextLine().trim().replace("[", "").replace("]", "").trim();
+                        String[] tokens = line.split("\\\\s*,\\\\s*|\\\\s+");
+                        int[] nums = new int[tokens.length];
+                        for (int i = 0; i < tokens.length; i++) {
+                            nums[i] = Integer.parseInt(tokens[i]);
+                        }
+                        int res = new Solution().maxSubArray(nums);
+                        System.out.println(res);
+                    }
+                }
+                """
+        ));
+
+        templatesBySlug.put("maximum-subarray", map);
     }
 }

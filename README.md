@@ -101,26 +101,64 @@ CodingFriend/
 cp .env.example .env
 ```
 
-### 2. Start Supporting Infrastructure via Docker Compose
+### 2. Start Complete Stack via Docker Compose
 ```bash
-docker-compose up -d postgres redis ollama
+# Start all 7 services (Postgres, Redis, Kafka, Ollama, Code-Executor, Backend, Frontend)
+docker compose up -d
+
+# Or start backing infrastructure only for hybrid local development:
+docker compose up -d postgres redis kafka ollama
 ```
 
-### 3. Run Backend
+### 3. Run Backend (If Running on Host)
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 The backend API is accessible at: `http://localhost:8080`  
 Swagger UI documentation: `http://localhost:8080/swagger-ui.html`
+Actuator Health endpoint: `http://localhost:8080/actuator/health`
 
-### 4. Run Frontend
+### 4. Run Frontend (If Running on Host)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 The web app is accessible at: `http://localhost:5173`
+
+---
+
+## 🧪 Automated Testing
+
+### Backend Test Execution
+```bash
+# Run all backend unit, integration, and security tests (244+ tests)
+cd backend
+./mvnw test
+
+# Run Security & Authentication test suites
+./mvnw test -Dtest=SecurityIntegrationTest,AuthControllerTest,JwtTokenProviderTest
+
+# Run Kafka Event & Message Pipeline tests
+./mvnw test -Dtest="*Kafka*,*Consumer*,*Producer*"
+
+# Run Code Execution & Sandbox isolation tests
+./mvnw test -Dtest="*Execution*,*Evaluator*,*Executor*"
+
+# Run Socratic AI & Mistake Engine tests
+./mvnw test -Dtest="*Mentor*,*Mistake*,*Prompt*"
+```
+
+### Frontend Test Execution
+```bash
+# Run Vitest unit & component test suite
+cd frontend
+npm run test
+
+# Run frontend build verification
+npm run build
+```
 
 ---
 
@@ -150,16 +188,18 @@ For full frontend documentation, see [frontend/README.md](frontend/README.md).
 
 Comprehensive project documentation is available in the [`docs/`](docs/) directory:
 
+- [Future Product Vision & Strategic Technical Roadmap](docs/future-roadmap.md)
 - [Architecture Overview](docs/architecture.md)
 - [Requirements & Specifications](docs/requirements.md)
 - [Database Schema & Migrations](docs/database-design.md)
 - [REST API Specifications](docs/api-documentation.md)
 - [AI Mentor & Socratic System](docs/ai-mentor.md)
 - [Code Execution Sandbox](docs/code-execution.md)
-- [Security Guidelines](docs/security.md)
+- [Security Guidelines & Threat Audit](docs/security-audit.md)
+- [Testing Strategy & Test Suite Guide](docs/testing.md)
+- [Production Observability & Telemetry](docs/observability.md)
 - [Development Setup Guide](docs/development-setup.md)
 - [Deployment Strategy](docs/deployment.md)
-- [Testing Strategy](docs/testing.md)
 - [Architecture Decision Records (ADRs)](docs/decisions/)
 
 ---

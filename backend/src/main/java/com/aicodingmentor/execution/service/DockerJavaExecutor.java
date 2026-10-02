@@ -63,13 +63,18 @@ public class DockerJavaExecutor implements CodeExecutor {
             return ExecutionResult.invalidSource("Source code contains illegal null byte characters.");
         }
 
-        String className = resolveClassName(request.sourceCode(), request.className());
+        String sourceCode = request.sourceCode();
+        if (!sourceCode.contains("import java.util.")) {
+            sourceCode = "import java.util.*;\nimport java.util.stream.*;\nimport java.io.*;\nimport java.math.*;\n" + sourceCode;
+        }
+
+        String className = resolveClassName(sourceCode, request.className());
         Path workspace = null;
 
         try {
             workspace = Files.createTempDirectory("sandbox-exec-");
             Path sourceFile = workspace.resolve(className + ".java");
-            Files.writeString(sourceFile, request.sourceCode(), StandardCharsets.UTF_8);
+            Files.writeString(sourceFile, sourceCode, StandardCharsets.UTF_8);
 
             // Step 1: Compile Java Source
             long compileStart = System.currentTimeMillis();

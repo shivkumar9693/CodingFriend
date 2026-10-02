@@ -84,8 +84,8 @@ class SubmissionDtoValidationTest {
     void unsupportedLanguage_Fails() {
         CreateSubmissionRequest request = new CreateSubmissionRequest(
                 UUID.randomUUID(),
-                "print('Hello')",
-                "PYTHON"
+                "fn main() {}",
+                "RUST"
         );
 
         Set<ConstraintViolation<CreateSubmissionRequest>> violations = validator.validate(request);

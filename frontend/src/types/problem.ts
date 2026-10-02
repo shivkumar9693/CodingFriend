@@ -21,6 +21,8 @@ export interface ProblemSummary {
   updatedAt: string;
 }
 
+export type ProblemSummaryResponse = ProblemSummary;
+
 export interface ProblemDetail {
   id: string;
   title: string;

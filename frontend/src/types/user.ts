@@ -6,6 +6,13 @@ export interface UserProfile {
   fullName: string;
   bio?: string | null;
   githubUsername?: string | null;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  linkedinUrl?: string | null;
+  contestRating?: number;
+  duelRating?: number;
+  currentStreak?: number;
+  maxStreak?: number;
   role: UserRole;
   createdAt: string;
   updatedAt: string;
@@ -15,6 +22,9 @@ export interface UpdateProfileRequest {
   fullName: string;
   bio?: string | null;
   githubUsername?: string | null;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  linkedinUrl?: string | null;
 }
 
 export interface LearnerStatistics {
@@ -23,6 +33,14 @@ export interface LearnerStatistics {
   accuracyPercentage: number;
   problemsSolved: number;
   problemsAttempted: number;
+  easySolved?: number;
+  totalEasy?: number;
+  mediumSolved?: number;
+  totalMedium?: number;
+  hardSolved?: number;
+  totalHard?: number;
+  totalProblems?: number;
+  contestsAttended?: number;
   averageAttemptsPerProblem: number;
   mostFrequentMistake?: string | null;
   mistakeBreakdown?: Record<string, number>;

@@ -67,4 +67,22 @@ public class SocraBuddyMentorController {
         SocraBuddyDiagnosisResponse response = mentorService.diagnoseMistake(userId, request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/inline-assist")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get real-time inline Socratic micro-nudge for Monaco Editor", description = "Analyzes active line and gives a non-spoiler 1-sentence thought prompt")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Inline assist nudge generated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation error in request"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - authentication required"),
+            @ApiResponse(responseCode = "404", description = "Problem not found")
+    })
+    public ResponseEntity<com.aicodingmentor.mentor.dto.InlineAssistResponse> requestInlineAssist(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @Valid @RequestBody com.aicodingmentor.mentor.dto.InlineAssistRequest request
+    ) {
+        UUID userId = currentUser != null ? currentUser.getId() : UUID.randomUUID();
+        com.aicodingmentor.mentor.dto.InlineAssistResponse response = mentorService.generateInlineAssist(userId, request);
+        return ResponseEntity.ok(response);
+    }
 }

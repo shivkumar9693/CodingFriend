@@ -109,6 +109,47 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     @Override
+    public SubmissionResponse runCode(UUID userId, CreateSubmissionRequest request) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(request, "request must not be null");
+
+        Problem problem = problemRepository.findById(request.problemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Problem", request.problemId()));
+
+        com.aicodingmentor.execution.model.SubmissionEvaluationResult evalResult =
+                executionPlaceholderService.executePublicTestCases(
+                        problem.getId(),
+                        request.sourceCode(),
+                        request.language()
+                );
+
+        String detailsJson = null;
+        try {
+            detailsJson = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(evalResult.testCaseResults());
+        } catch (Exception ex) {
+            log.warn("Failed to serialize test case results JSON for test run", ex);
+        }
+
+        Submission submission = new Submission(
+                userId,
+                request.problemId(),
+                request.sourceCode(),
+                request.language()
+        );
+        submission.markCompleted(
+                evalResult.verdict(),
+                evalResult.testsPassed(),
+                evalResult.totalTests(),
+                evalResult.totalExecutionTimeMs(),
+                detailsJson,
+                evalResult.compilationError()
+        );
+
+        return SubmissionResponse.from(submission);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public SubmissionResponse getSubmissionById(UUID submissionId, UUID requestingUserId, boolean isAdmin) {
         Objects.requireNonNull(submissionId, "submissionId must not be null");

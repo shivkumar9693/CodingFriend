@@ -21,4 +21,6 @@ public interface TestCaseService {
     void deleteTestCase(UUID problemId, UUID testCaseId);
 
     List<TestCase> getTestCasesForExecution(UUID problemId);
+
+    List<TestCase> getPublicTestCasesForExecution(UUID problemId);
 }

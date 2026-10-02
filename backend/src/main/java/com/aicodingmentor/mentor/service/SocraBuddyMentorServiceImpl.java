@@ -248,4 +248,130 @@ public class SocraBuddyMentorServiceImpl implements SocraBuddyMentorService {
                 HintLevel.LEVEL_2_CONCEPT
         );
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.aicodingmentor.mentor.dto.InlineAssistResponse generateInlineAssist(UUID userId, com.aicodingmentor.mentor.dto.InlineAssistRequest request) {
+        Problem problem = problemRepository.findById(request.problemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Problem", request.problemId()));
+
+        String systemPrompt = promptBuilder.buildSystemPrompt("v2");
+        String userPrompt = promptBuilder.buildInlineAssistPrompt(problem, request);
+
+        Optional<String> rawLlmResponse = mentorModelClient.generate(systemPrompt, userPrompt);
+
+        if (rawLlmResponse.isPresent()) {
+            try {
+                JsonNode json = objectMapper.readTree(rawLlmResponse.get());
+                String nudgeType = json.has("nudgeType") ? json.get("nudgeType").asText() : "LOGIC_QUESTION";
+                String inlineMessage = json.has("inlineMessage") ? json.get("inlineMessage").asText() : "";
+                int targetLine = json.has("targetLine") ? json.get("targetLine").asInt() : request.cursorLine();
+
+                inlineMessage = sanitizeNonSpoilerGuidance(inlineMessage);
+
+                if (!inlineMessage.isBlank()) {
+                    return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                            nudgeType,
+                            inlineMessage,
+                            targetLine,
+                            mentorModelClient.getModelName()
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to parse inline assist JSON from LLM: {}", ex.getMessage());
+            }
+        }
+
+        // Rule-Based Socratic Fallback
+        return generateFallbackInlineNudge(problem, request);
+    }
+
+    private com.aicodingmentor.mentor.dto.InlineAssistResponse generateFallbackInlineNudge(
+            Problem problem,
+            com.aicodingmentor.mentor.dto.InlineAssistRequest request
+    ) {
+        String fullCode = request.sourceCode();
+        String[] lines = fullCode.split("\\r?\\n");
+        int targetLine = request.cursorLine();
+        int targetIdx = Math.min(targetLine - 1, lines.length - 1);
+
+        // Examine the current line and immediate preceding lines
+        String activeLine = (targetIdx >= 0 && targetIdx < lines.length) ? lines[targetIdx].trim() : "";
+        String prevLine = (targetIdx - 1 >= 0 && targetIdx - 1 < lines.length) ? lines[targetIdx - 1].trim() : "";
+        String recentLine = !activeLine.isBlank() ? activeLine : prevLine;
+
+        // 1. Detect Detour / Arbitrary variable declarations (e.g. "int ab = 2;", "int x = 5;")
+        java.util.regex.Pattern varDeclPattern = java.util.regex.Pattern.compile(
+                "(?:int|double|float|long|short|byte|boolean|String|var)\\s+([a-zA-Z0-9_]+)\\s*=\\s*([^;]+);"
+        );
+        java.util.regex.Matcher varMatcher = varDeclPattern.matcher(recentLine);
+        if (varMatcher.find()) {
+            String varName = varMatcher.group(1);
+            String lowerName = varName.toLowerCase();
+            if (!lowerName.equals("target") && !lowerName.equals("complement")
+                    && !lowerName.equals("diff") && !lowerName.equals("sum")
+                    && !lowerName.equals("result") && !lowerName.equals("ans")
+                    && !lowerName.equals("i") && !lowerName.equals("j")
+                    && !lowerName.equals("left") && !lowerName.equals("right")
+                    && !lowerName.equals("n") && !lowerName.equals("len") && !lowerName.equals("length")) {
+                return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                        "DETOUR_CHECK",
+                        String.format("Consider what role variable '%s' serves in this algorithm. How will it help you find the indices adding to target?", varName),
+                        targetLine,
+                        "SocraBuddy-RuleEngine"
+                );
+            }
+        }
+
+        // 2. Detect Single Generic Map Syntax Error (e.g., "Map<Integer> map = new HashMap<>();")
+        java.util.regex.Pattern singleGenericMapPattern = java.util.regex.Pattern.compile("Map\\s*<\\s*([a-zA-Z0-9_]+)\\s*>\\s*([a-zA-Z0-9_]+)");
+        java.util.regex.Matcher mapMatcher = singleGenericMapPattern.matcher(recentLine);
+        if (mapMatcher.find()) {
+            return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                    "SYNTAX_POINTER",
+                    "In Java, Map<Key, Value> requires two generic types (e.g. Map<Integer, Integer>). What should the key and value types be?",
+                    targetLine,
+                    "SocraBuddy-RuleEngine"
+            );
+        }
+
+        // 3. Detect Nested Loops (O(N^2) indicator)
+        String lowerCode = fullCode.toLowerCase();
+        if (lowerCode.contains("for") && (lowerCode.indexOf("for") != lowerCode.lastIndexOf("for"))) {
+            return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                    "OPTIMIZATION_NUDGE",
+                    "Can this nested loop be reduced to O(N) using a Hash Table / Map to store previously seen elements?",
+                    targetLine,
+                    "SocraBuddy-RuleEngine"
+            );
+        }
+
+        // 4. Proper Map Initialized
+        if (recentLine.toLowerCase().contains("map") && recentLine.contains("new HashMap")) {
+            return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                    "LOGIC_QUESTION",
+                    "You've initialized a Map. What key-value pair should you store for each element to enable O(1) lookups for the complement?",
+                    targetLine,
+                    "SocraBuddy-RuleEngine"
+            );
+        }
+
+        // 5. Return statement
+        if (recentLine.contains("return")) {
+            return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                    "SYNTAX_POINTER",
+                    "Ensure your return value matches the expected output format for all valid input cases.",
+                    targetLine,
+                    "SocraBuddy-RuleEngine"
+            );
+        }
+
+        // 6. Generic Next Step
+        return com.aicodingmentor.mentor.dto.InlineAssistResponse.of(
+                "NEXT_STEP_NUDGE",
+                "What is the first step or loop you need to scan elements and check their complement?",
+                targetLine,
+                "SocraBuddy-RuleEngine"
+        );
+    }
 }

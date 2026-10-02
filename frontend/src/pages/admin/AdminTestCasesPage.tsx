@@ -143,9 +143,20 @@ export const AdminTestCasesPage: React.FC = () => {
     }
   };
 
+  const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'HIDDEN'>('ALL');
+
+  const publicCount = testCases.filter((tc) => !tc.isHidden).length;
+  const hiddenCount = testCases.filter((tc) => tc.isHidden).length;
+
+  const filteredTestCases = testCases.filter((tc) => {
+    if (visibilityFilter === 'PUBLIC') return !tc.isHidden;
+    if (visibilityFilter === 'HIDDEN') return tc.isHidden;
+    return true;
+  });
+
   if (isLoading) {
     return (
-      <div className="page-container center-loader">
+      <div className="page-container center-loader py-12">
         <LoadingSpinner message="Loading test suite configuration..." />
       </div>
     );
@@ -166,8 +177,8 @@ export const AdminTestCasesPage: React.FC = () => {
               <FlaskConical size={14} /> Test Suite Manager
             </span>
           </div>
-          <h1 className="page-title">
-            Test Cases: {problem?.title || 'Coding Problem'}
+          <h1 className="page-title flex-align-gap">
+            Test Suite: <span className="text-accent">{problem?.title || 'Coding Problem'}</span>
           </h1>
           <p className="page-subtitle">
             Configure public sample test cases (visible to learners) and hidden test suites (used solely for grading).
@@ -200,40 +211,86 @@ export const AdminTestCasesPage: React.FC = () => {
 
       {/* Test Cases List */}
       {testCases.length === 0 ? (
-        <div className="empty-state-card">
-          <FlaskConical size={48} className="empty-icon text-muted" />
-          <h2>No Test Cases Configured</h2>
-          <p>This problem has no test cases yet. Add at least one public and one hidden test case.</p>
-          <button type="button" className="btn btn-primary" onClick={openCreateModal}>
+        <div className="empty-state-card py-10">
+          <FlaskConical size={48} className="empty-icon text-muted mx-auto mb-2" />
+          <h2 className="text-lg font-bold text-white mb-1">No Test Cases Configured</h2>
+          <p className="text-sm text-muted">This problem has no test cases yet. Add at least one public and one hidden test case.</p>
+          <button type="button" className="btn btn-primary btn-sm mt-3" onClick={openCreateModal}>
             <Plus size={16} /> Add First Test Case
           </button>
         </div>
       ) : (
         <div className="admin-table-card">
+          {/* Filter Toolbar */}
+          <div className="admin-problem-toolbar-enhanced">
+            <div className="toolbar-top-row">
+              <div className="summary-left-info">
+                <span className="text-sm font-semibold">
+                  Total Cases: <strong>{testCases.length}</strong> (
+                  <span className="text-emerald-400 font-bold">{publicCount} Public</span>,{' '}
+                  <span className="text-purple-400 font-bold">{hiddenCount} Hidden</span>)
+                </span>
+              </div>
+
+              <div className="toolbar-chips-group">
+                <button
+                  type="button"
+                  className={`filter-chip-pill chip-all ${visibilityFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setVisibilityFilter('ALL')}
+                >
+                  <span>All</span>
+                  <span className="chip-badge-count">{testCases.length}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`filter-chip-pill chip-easy ${visibilityFilter === 'PUBLIC' ? 'active' : ''}`}
+                  onClick={() => setVisibilityFilter('PUBLIC')}
+                >
+                  <Eye size={13} />
+                  <span>Public Samples</span>
+                  <span className="chip-badge-count">{publicCount}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`filter-chip-pill chip-hard ${visibilityFilter === 'HIDDEN' ? 'active' : ''}`}
+                  onClick={() => setVisibilityFilter('HIDDEN')}
+                >
+                  <EyeOff size={13} />
+                  <span>Hidden Grading</span>
+                  <span className="chip-badge-count">{hiddenCount}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="table-responsive">
             <table className="custom-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Visibility</th>
+                  <th style={{ width: '60px' }}>#</th>
+                  <th style={{ width: '150px' }}>Visibility</th>
                   <th>Input Data</th>
                   <th>Expected Output</th>
                   <th>Explanation / Metadata</th>
-                  <th className="text-right">Actions</th>
+                  <th className="text-right" style={{ width: '130px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {testCases.map((tc) => (
+                {filteredTestCases.map((tc) => (
                   <tr key={tc.id}>
-                    <td className="font-bold text-muted">{tc.sequenceOrder}</td>
+                    <td>
+                      <span className="sequence-order-badge">#{tc.sequenceOrder}</span>
+                    </td>
                     <td>
                       {tc.isHidden ? (
                         <span className="badge-hidden">
-                          <EyeOff size={13} /> Hidden Case
+                          <EyeOff size={13} /> Hidden
                         </span>
                       ) : (
                         <span className="badge-public">
-                          <Eye size={13} /> Public Sample
+                          <Eye size={13} /> Public
                         </span>
                       )}
                     </td>
@@ -243,26 +300,32 @@ export const AdminTestCasesPage: React.FC = () => {
                     <td>
                       <pre className="inline-code-cell">{tc.expectedOutput}</pre>
                     </td>
-                    <td className="text-sm text-secondary">
-                      {tc.explanation || <span className="text-muted">None</span>}
+                    <td>
+                      {tc.explanation ? (
+                        <span className="text-sm">{tc.explanation}</span>
+                      ) : tc.metadata ? (
+                        <span className="text-xs font-mono text-muted">{tc.metadata}</span>
+                      ) : (
+                        <span className="text-xs text-muted italic">None</span>
+                      )}
                     </td>
                     <td className="text-right">
                       <div className="action-buttons-group">
                         <button
                           type="button"
-                          className="btn-icon"
+                          className="btn-action-edit"
                           onClick={() => openEditModal(tc)}
                           title="Edit Test Case"
                         >
-                          <Edit2 size={15} />
+                          <Edit2 size={13} /> Edit
                         </button>
                         <button
                           type="button"
-                          className="btn-icon btn-icon-danger"
+                          className="btn-action-delete"
                           onClick={() => handleDelete(tc.id)}
                           title="Delete Test Case"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>

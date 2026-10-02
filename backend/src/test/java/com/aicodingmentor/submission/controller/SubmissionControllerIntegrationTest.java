@@ -129,7 +129,7 @@ class SubmissionControllerIntegrationTest {
         CreateSubmissionRequest invalidRequest = new CreateSubmissionRequest(
                 null, // Missing problem ID
                 "  ", // Blank source code
-                "PYTHON" // Unsupported language
+                "RUST" // Unsupported language
         );
 
         mockMvc.perform(post("/api/submissions")

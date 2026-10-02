@@ -94,9 +94,13 @@ public class MultiLanguageExecutor implements CodeExecutor {
     // JAVA EXECUTION
     // ==========================================
     private ExecutionResult executeJava(Path workspace, ExecutionRequest request, long startTime) throws Exception {
-        String className = resolveJavaClassName(request.sourceCode(), request.className());
+        String sourceCode = request.sourceCode();
+        if (!sourceCode.contains("import java.util.")) {
+            sourceCode = "import java.util.*;\nimport java.util.stream.*;\nimport java.io.*;\nimport java.math.*;\n" + sourceCode;
+        }
+        String className = resolveJavaClassName(sourceCode, request.className());
         Path sourceFile = workspace.resolve(className + ".java");
-        Files.writeString(sourceFile, request.sourceCode(), StandardCharsets.UTF_8);
+        Files.writeString(sourceFile, sourceCode, StandardCharsets.UTF_8);
 
         // Step 1: Compile Java
         long compileStart = System.currentTimeMillis();

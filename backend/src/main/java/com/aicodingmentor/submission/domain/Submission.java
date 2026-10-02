@@ -193,6 +193,16 @@ public class Submission {
         this.evaluationDetails = details;
     }
 
+    public void markCompleted(com.aicodingmentor.execution.model.EvaluationVerdict verdict, int passed, int total, long timeMs, String details, String errorMessage) {
+        this.status = SubmissionStatus.COMPLETED;
+        this.verdict = verdict;
+        this.testsPassed = passed;
+        this.totalTests = total;
+        this.executionTimeMs = timeMs;
+        this.evaluationDetails = details;
+        this.errorMessage = errorMessage;
+    }
+
     public void markCompleted() {
         this.status = SubmissionStatus.COMPLETED;
     }

@@ -211,6 +211,47 @@ public class SocraBuddyPromptBuilder implements PromptBuilder {
     }
 
     @Override
+    public String buildInlineAssistPrompt(Problem problem, com.aicodingmentor.mentor.dto.InlineAssistRequest request) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("TASK: Provide a precise, real-time Socratic micro-nudge for a learner writing code in the editor.\n\n");
+        sb.append("PROBLEM CONTEXT:\n");
+        sb.append("Title: ").append(promptSanitizer.sanitize(problem.getTitle())).append("\n");
+        sb.append("Description: ").append(promptSanitizer.sanitize(problem.getDescription())).append("\n\n");
+
+        sb.append("ACTIVE LANGUAGE: ").append(request.language()).append("\n");
+        sb.append("CURSOR POSITION: Line ").append(request.cursorLine()).append("\n\n");
+
+        // Extract the specific active line and preceding line
+        String[] lines = request.sourceCode().split("\\r?\\n");
+        int targetIdx = Math.min(request.cursorLine() - 1, lines.length - 1);
+        String activeLine = (targetIdx >= 0 && targetIdx < lines.length) ? lines[targetIdx] : "";
+        String prevLine = (targetIdx - 1 >= 0 && targetIdx - 1 < lines.length) ? lines[targetIdx - 1] : "";
+
+        sb.append("PREVIOUS LINE (Line ").append(targetIdx).append("): ").append(promptSanitizer.sanitize(prevLine)).append("\n");
+        sb.append("ACTIVE LINE (Line ").append(targetIdx + 1).append("): ").append(promptSanitizer.sanitize(activeLine)).append("\n\n");
+
+        sb.append("CURRENT FULL CODE IN EDITOR:\n```").append(request.language().toLowerCase()).append("\n");
+        sb.append(promptSanitizer.sanitize(request.sourceCode())).append("\n```\n\n");
+
+        sb.append(String.format("""
+                INSTRUCTIONS FOR INLINE MICRO-ASSIST:
+                1. Look closely at the active line (Line %d) and previous line (Line %d).
+                2. If the learner declared an irrelevant, hardcoded, or unnecessary variable (e.g., 'int ab=2;', unused temp variables), or typed invalid/incomplete syntax (e.g., 'Map<Integer>' missing a second generic type in Java), or took a detour in the wrong direction, IMMEDIATELY ask a Socratic question about THAT SPECIFIC variable or construct to help them course-correct.
+                3. If the code structure is heading towards the solution, ask a guiding question about their next step or loop invariant.
+                4. STRICT LIMIT: Keep your message under 35 words.
+                5. ABSOLUTELY NEVER output solution code, completed lines of code, or copy-paste answers.
+                6. Respond in JSON format only with:
+                {
+                  "nudgeType": "LOGIC_QUESTION" (or "SYNTAX_POINTER", "DETOUR_CHECK", "EDGE_CASE_CHECK"),
+                  "inlineMessage": "1-2 sentence guiding question or thought-provoking prompt about the specific line",
+                  "targetLine": %d
+                }
+                """, targetIdx + 1, targetIdx, request.cursorLine()));
+
+        return sb.toString();
+    }
+
+    @Override
     public String getPromptVersion() {
         return CURRENT_PROMPT_VERSION;
     }

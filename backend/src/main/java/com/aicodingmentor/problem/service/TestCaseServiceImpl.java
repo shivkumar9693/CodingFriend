@@ -121,6 +121,13 @@ public class TestCaseServiceImpl implements TestCaseService {
         return testCaseRepository.findByProblemIdOrderBySequenceOrderAsc(problemId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TestCase> getPublicTestCasesForExecution(UUID problemId) {
+        verifyProblemExists(problemId);
+        return testCaseRepository.findByProblemIdAndIsHiddenFalseOrderBySequenceOrderAsc(problemId);
+    }
+
     private void verifyProblemExists(UUID problemId) {
         if (problemId == null || !problemRepository.existsById(problemId)) {
             throw new ProblemNotFoundException("Problem not found with id: " + problemId);

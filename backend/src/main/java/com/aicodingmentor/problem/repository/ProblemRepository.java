@@ -13,6 +13,10 @@ public interface ProblemRepository extends JpaRepository<Problem, UUID>, JpaSpec
 
     Optional<Problem> findBySlug(String slug);
 
+    java.util.List<Problem> findByDifficulty(com.aicodingmentor.problem.domain.ProblemDifficulty difficulty);
+
+    long countByDifficulty(com.aicodingmentor.problem.domain.ProblemDifficulty difficulty);
+
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, UUID id);

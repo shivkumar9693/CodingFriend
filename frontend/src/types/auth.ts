@@ -7,6 +7,13 @@ export interface User {
   role: UserRole;
   bio?: string | null;
   githubUsername?: string | null;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  linkedinUrl?: string | null;
+  contestRating?: number;
+  duelRating?: number;
+  currentStreak?: number;
+  maxStreak?: number;
   createdAt?: string;
   updatedAt?: string;
 }

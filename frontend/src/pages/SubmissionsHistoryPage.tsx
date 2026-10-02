@@ -99,8 +99,9 @@ export const SubmissionsHistoryPage: React.FC = () => {
                 <tr>
                   <th>Submission ID</th>
                   <th>Problem</th>
+                  <th>Verdict</th>
                   <th>Language</th>
-                  <th>Status</th>
+                  <th>Runtime</th>
                   <th>Submitted At</th>
                   <th className="text-right">Action</th>
                 </tr>
@@ -108,6 +109,34 @@ export const SubmissionsHistoryPage: React.FC = () => {
               <tbody>
                 {submissions.map((sub) => {
                   const prob = problemsMap[sub.problemId];
+
+                  const getVerdictBadgeClass = (verdict?: string | null) => {
+                    switch (verdict) {
+                      case 'ACCEPTED':
+                        return 'verdict-badge verdict-accepted';
+                      case 'WRONG_ANSWER':
+                        return 'verdict-badge verdict-wrong';
+                      case 'COMPILE_ERROR':
+                        return 'verdict-badge verdict-compile';
+                      case 'RUNTIME_ERROR':
+                        return 'verdict-badge verdict-runtime';
+                      case 'TIME_LIMIT_EXCEEDED':
+                        return 'verdict-badge verdict-timeout';
+                      case 'MEMORY_LIMIT_EXCEEDED':
+                        return 'verdict-badge verdict-memory';
+                      default:
+                        return 'verdict-badge';
+                    }
+                  };
+
+                  const formatVerdictLabel = (verdict?: string | null) => {
+                    if (!verdict) return 'Pending';
+                    return verdict
+                      .split('_')
+                      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                      .join(' ');
+                  };
+
                   return (
                     <tr key={sub.id}>
                       <td className="font-mono text-muted">
@@ -123,10 +152,26 @@ export const SubmissionsHistoryPage: React.FC = () => {
                         )}
                       </td>
                       <td>
-                        <span className="lang-pill">{sub.language}</span>
+                        {sub.verdict ? (
+                          <div className="flex-align-gap" style={{ gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <span className={getVerdictBadgeClass(sub.verdict)}>
+                              {formatVerdictLabel(sub.verdict)}
+                            </span>
+                            {sub.totalTests != null && sub.totalTests > 0 && (
+                              <span className="text-xs text-muted">
+                                ({sub.testsPassed || 0}/{sub.totalTests})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <StatusBadge status={sub.status} />
+                        )}
                       </td>
                       <td>
-                        <StatusBadge status={sub.status} />
+                        <span className="lang-pill">{sub.language}</span>
+                      </td>
+                      <td className="text-muted text-sm">
+                        {sub.executionTimeMs != null ? `${sub.executionTimeMs} ms` : '-'}
                       </td>
                       <td className="text-muted text-sm">
                         <span className="flex-align-gap">
@@ -203,6 +248,26 @@ export const SubmissionsHistoryPage: React.FC = () => {
                 <label>Status:</label>
                 <StatusBadge status={selectedSubmission.status} />
               </div>
+              {selectedSubmission.verdict && (
+                <div className="meta-block">
+                  <label>Verdict:</label>
+                  <span className={`verdict-tag verdict-${selectedSubmission.verdict.toLowerCase().replace(/_/g, '-')}`}>
+                    {selectedSubmission.verdict}
+                  </span>
+                </div>
+              )}
+              {selectedSubmission.totalTests != null && (
+                <div className="meta-block">
+                  <label>Tests Passed:</label>
+                  <span>{selectedSubmission.testsPassed || 0} / {selectedSubmission.totalTests}</span>
+                </div>
+              )}
+              {selectedSubmission.executionTimeMs != null && (
+                <div className="meta-block">
+                  <label>Runtime:</label>
+                  <span>{selectedSubmission.executionTimeMs} ms</span>
+                </div>
+              )}
               <div className="meta-block">
                 <label>Submitted:</label>
                 <span>{new Date(selectedSubmission.createdAt).toLocaleString()}</span>

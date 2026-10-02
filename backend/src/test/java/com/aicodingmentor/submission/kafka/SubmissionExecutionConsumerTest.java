@@ -58,6 +58,9 @@ class SubmissionExecutionConsumerTest {
     @Mock
     private CacheManager cacheManager;
 
+    @Mock
+    private com.aicodingmentor.user.service.UserService userService;
+
     private ObjectMapper objectMapper;
     private SubmissionExecutionConsumer consumer;
 
@@ -77,7 +80,8 @@ class SubmissionExecutionConsumerTest {
                 testCaseEvaluator,
                 eventProducer,
                 objectMapper,
-                cacheManager
+                cacheManager,
+                userService
         );
 
         submissionId = UUID.randomUUID();

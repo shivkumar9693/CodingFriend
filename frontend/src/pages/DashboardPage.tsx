@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import {
   BarChart3,
   CheckCircle2,
@@ -9,50 +9,92 @@ import {
   BookOpen,
   ArrowRight,
   RefreshCw,
-  Clock,
   Sparkles,
   History,
-  Target
+  Target,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Calendar,
+  Filter,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { userService } from '../services/userService';
 import { submissionService } from '../services/submissionService';
 import { problemService } from '../services/problemService';
 import { LearnerStatistics } from '../types/user';
-import { SubmissionSummaryResponse } from '../types/submission';
+import { SubmissionSummaryResponse, SubmissionResponse } from '../types/submission';
 import { ProblemSummary } from '../types/problem';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
+import { Modal } from '../components/Modal';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
 
+  if (user?.role === 'ADMIN') {
+    return <Navigate to="/admin" replace />;
+  }
+
   const [statistics, setStatistics] = useState<LearnerStatistics | null>(null);
-  const [recentSubmissions, setRecentSubmissions] = useState<SubmissionSummaryResponse[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionSummaryResponse[]>([]);
   const [problemsMap, setProblemsMap] = useState<Record<string, ProblemSummary>>({});
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Pagination & Filter state for submissions
+  const [subPage, setSubPage] = useState(0);
+  const [subTotalPages, setSubTotalPages] = useState(1);
+  const [subTotalElements, setSubTotalElements] = useState(0);
+  const [verdictFilter, setVerdictFilter] = useState<string>('ALL');
+  const [submissionSearch, setSubmissionSearch] = useState('');
+
+  // Code inspection modal
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionResponse | null>(null);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+
+  const fetchSubmissionsPage = useCallback(async (pageNumber: number) => {
+    setIsSubmissionsLoading(true);
+    try {
+      const res = await submissionService.getSubmissions({
+        page: pageNumber,
+        size: 10,
+        sortBy: 'createdAt',
+        sortDirection: 'desc',
+      });
+      setSubmissions(res?.content || []);
+      setSubTotalPages(res?.totalPages || 1);
+      setSubTotalElements(res?.totalElements || 0);
+    } catch (err) {
+      console.error('Failed to load paginated submissions:', err);
+    } finally {
+      setIsSubmissionsLoading(false);
+    }
+  }, []);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const [statsRes, submissionsRes, problemsRes] = await Promise.all([
+      const [statsRes, problemsRes] = await Promise.all([
         userService.getLearnerStatistics().catch(() => null),
-        submissionService.getSubmissions({ page: 0, size: 5, sortBy: 'createdAt', sortDirection: 'desc' }).catch(() => ({ content: [] })),
-        problemService.getProblems({ page: 0, size: 50 }).catch(() => ({ content: [] })),
+        problemService.getProblems({ page: 0, size: 100 }).catch(() => ({ content: [] })),
       ]);
 
       setStatistics(statsRes);
-      setRecentSubmissions(submissionsRes?.content || []);
 
       const pMap: Record<string, ProblemSummary> = {};
       problemsRes?.content?.forEach((p) => {
         pMap[p.id] = p;
       });
       setProblemsMap(pMap);
+
+      await fetchSubmissionsPage(0);
+      setSubPage(0);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load learner dashboard data.';
       setErrorMessage(msg);
@@ -64,6 +106,25 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && newPage < subTotalPages) {
+      setSubPage(newPage);
+      fetchSubmissionsPage(newPage);
+    }
+  };
+
+  const viewSubmissionCode = async (submissionId: string) => {
+    setIsModalLoading(true);
+    try {
+      const sub = await submissionService.getSubmissionById(submissionId);
+      setSelectedSubmission(sub);
+    } catch (err) {
+      console.error('Failed to fetch submission details:', err);
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
 
   const formatMistakeName = (rawType: string): string => {
     return rawType
@@ -115,6 +176,17 @@ export const DashboardPage: React.FC = () => {
 
   const maxTopicCount = Math.max(...weakTopicsList.map((t) => t.count), 1);
 
+  // Filter submissions by verdict and search query locally
+  const filteredSubmissions = submissions.filter((sub) => {
+    const prob = problemsMap[sub.problemId];
+    const matchesVerdict = verdictFilter === 'ALL' || sub.verdict === verdictFilter;
+    const matchesSearch =
+      !submissionSearch.trim() ||
+      (prob?.title?.toLowerCase().includes(submissionSearch.toLowerCase())) ||
+      (sub.id.toLowerCase().includes(submissionSearch.toLowerCase()));
+    return matchesVerdict && matchesSearch;
+  });
+
   if (isLoading) {
     return (
       <div className="page-container center-loader">
@@ -145,22 +217,22 @@ export const DashboardPage: React.FC = () => {
         <div className="dashboard-welcome">
           <div className="welcome-tag">
             <Sparkles size={14} className="text-accent" />
-            <span>Learner Analytics & Mastery</span>
+            <span>Learner Analytics & Activity</span>
           </div>
           <h1 className="dashboard-title">
             Welcome back, <span className="text-gradient">{user?.fullName || 'Learner'}</span>!
           </h1>
           <p className="dashboard-subtitle">
-            Track your coding progress, identify recurring mistake patterns, and master algorithmic concepts with Socratic guidance.
+            Track your coding progress, inspect recurring mistake patterns, and review all your past submissions.
           </p>
         </div>
         <div className="dashboard-header-actions">
           <Link to="/problems" className="btn btn-primary">
             <BookOpen size={16} /> Solve Problems
           </Link>
-          <Link to="/submissions" className="btn btn-secondary">
-            <History size={16} /> Full History
-          </Link>
+          <button onClick={loadDashboardData} className="btn btn-secondary" title="Refresh metrics">
+            <RefreshCw size={15} /> Refresh
+          </button>
         </div>
       </div>
 
@@ -360,70 +432,249 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent Submissions Section */}
+          {/* Full Submissions Activity Section with Pagination */}
           <div className="dashboard-panel-card recent-submissions-card" data-testid="section-recent-submissions">
-            <div className="panel-card-header">
+            <div className="panel-card-header flex-between">
               <div className="panel-header-title">
-                <Clock size={20} className="text-muted" />
-                <h3>Recent Submissions</h3>
+                <History size={20} className="text-accent" />
+                <h3>Submission History & Log</h3>
               </div>
-              <Link to="/submissions" className="btn btn-secondary btn-sm">
-                View All <ArrowRight size={14} />
-              </Link>
+              <span className="panel-badge-pill">
+                {subTotalElements} Total Submissions
+              </span>
             </div>
 
-            {recentSubmissions.length === 0 ? (
+            {/* Submissions Filter Toolbar */}
+            <div className="submission-filter-toolbar">
+              <div className="toolbar-search-box">
+                <Search size={14} className="search-prefix-icon" />
+                <input
+                  type="text"
+                  placeholder="Filter by problem title or ID..."
+                  value={submissionSearch}
+                  onChange={(e) => setSubmissionSearch(e.target.value)}
+                  className="toolbar-search-input"
+                />
+              </div>
+
+              <div className="toolbar-chips">
+                <Filter size={13} className="text-muted" />
+                {['ALL', 'ACCEPTED', 'WRONG_ANSWER', 'COMPILE_ERROR', 'TIME_LIMIT_EXCEEDED'].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`filter-chip ${verdictFilter === v ? 'active' : ''}`}
+                    onClick={() => setVerdictFilter(v)}
+                  >
+                    {v === 'ALL' ? 'All Verdicts' : formatMistakeName(v)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isSubmissionsLoading ? (
+              <div className="center-loader py-8">
+                <LoadingSpinner message="Loading submissions page..." />
+              </div>
+            ) : filteredSubmissions.length === 0 ? (
               <div className="panel-empty-substate">
-                <p>No recent submissions found.</p>
+                <p>No submissions matching your current filter.</p>
               </div>
             ) : (
-              <div className="table-responsive">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Problem</th>
-                      <th>Verdict</th>
-                      <th>Language</th>
-                      <th>Runtime</th>
-                      <th>Submitted At</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentSubmissions.map((sub) => {
-                      const problem = problemsMap[sub.problemId];
-                      return (
-                        <tr key={sub.id}>
-                          <td>
-                            {problem ? (
-                              <Link to={`/problems/${problem.slug}`} className="table-link font-medium">
-                                {problem.title}
-                              </Link>
-                            ) : (
-                              <span className="text-muted">Problem #{sub.problemId.substring(0, 8)}</span>
-                            )}
-                          </td>
-                          <td>
-                            <StatusBadge status={sub.status} />
-                          </td>
-                          <td>
-                            <span className="lang-tag">{sub.language || 'JAVA'}</span>
-                          </td>
-                          <td className="text-muted">
-                            {sub.executionTimeMs != null ? `${sub.executionTimeMs} ms` : '-'}
-                          </td>
-                          <td className="text-muted">
-                            {formatDate(sub.createdAt)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="table-responsive">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Problem</th>
+                        <th>Verdict</th>
+                        <th>Tests</th>
+                        <th>Language</th>
+                        <th>Runtime</th>
+                        <th>Submitted At</th>
+                        <th className="text-right">Code</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSubmissions.map((sub) => {
+                        const problem = problemsMap[sub.problemId];
+                        const getVerdictBadgeClass = (verdict?: string | null) => {
+                          switch (verdict) {
+                            case 'ACCEPTED':
+                              return 'verdict-badge verdict-accepted';
+                            case 'WRONG_ANSWER':
+                              return 'verdict-badge verdict-wrong';
+                            case 'COMPILE_ERROR':
+                              return 'verdict-badge verdict-compile';
+                            case 'RUNTIME_ERROR':
+                              return 'verdict-badge verdict-runtime';
+                            case 'TIME_LIMIT_EXCEEDED':
+                              return 'verdict-badge verdict-timeout';
+                            case 'MEMORY_LIMIT_EXCEEDED':
+                              return 'verdict-badge verdict-memory';
+                            default:
+                              return 'verdict-badge';
+                          }
+                        };
+
+                        const formatVerdictLabel = (verdict?: string | null) => {
+                          if (!verdict) return 'Pending';
+                          return verdict
+                            .split('_')
+                            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                            .join(' ');
+                        };
+
+                        return (
+                          <tr key={sub.id}>
+                            <td>
+                              {problem ? (
+                                <Link to={`/problems/${problem.slug}`} className="table-link font-medium">
+                                  {problem.title}
+                                </Link>
+                              ) : (
+                                <span className="text-muted">Problem #{sub.problemId.substring(0, 8)}</span>
+                              )}
+                            </td>
+                            <td>
+                              {sub.verdict ? (
+                                <span className={getVerdictBadgeClass(sub.verdict)}>
+                                  {formatVerdictLabel(sub.verdict)}
+                                </span>
+                              ) : (
+                                <StatusBadge status={sub.status} />
+                              )}
+                            </td>
+                            <td>
+                              {sub.totalTests != null && sub.totalTests > 0 ? (
+                                <span className="text-xs text-muted">
+                                  {sub.testsPassed || 0} / {sub.totalTests}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted">-</span>
+                              )}
+                            </td>
+                            <td>
+                              <span className="lang-tag">{sub.language || 'JAVA'}</span>
+                            </td>
+                            <td className="text-muted">
+                              {sub.executionTimeMs != null ? `${sub.executionTimeMs} ms` : '-'}
+                            </td>
+                            <td className="text-muted text-sm">
+                              <span className="flex-align-gap">
+                                <Calendar size={13} />
+                                {formatDate(sub.createdAt)}
+                              </span>
+                            </td>
+                            <td className="text-right">
+                              <button
+                                type="button"
+                                className="btn-icon"
+                                onClick={() => viewSubmissionCode(sub.id)}
+                                title="Inspect source code and execution logs"
+                              >
+                                <Eye size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Submissions Pagination Controls */}
+                <div className="pagination-bar">
+                  <span className="pagination-info">
+                    Showing page {subPage + 1} of {subTotalPages} ({subTotalElements} total submissions)
+                  </span>
+                  <div className="pagination-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={subPage === 0}
+                      onClick={() => handlePageChange(subPage - 1)}
+                    >
+                      <ChevronLeft size={15} /> Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={subPage >= subTotalPages - 1}
+                      onClick={() => handlePageChange(subPage + 1)}
+                    >
+                      Next <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </>
       )}
+
+      {/* Submission Code Inspector Modal */}
+      <Modal
+        isOpen={!!selectedSubmission || isModalLoading}
+        onClose={() => setSelectedSubmission(null)}
+        title={
+          selectedSubmission
+            ? `Submission Details (${selectedSubmission.language})`
+            : 'Loading Submission...'
+        }
+        maxWidth="750px"
+      >
+        {isModalLoading ? (
+          <LoadingSpinner message="Retrieving source code..." />
+        ) : selectedSubmission ? (
+          <div className="submission-modal-details">
+            <div className="submission-meta-row">
+              <div className="meta-block">
+                <label>Status:</label>
+                <StatusBadge status={selectedSubmission.status} />
+              </div>
+              {selectedSubmission.verdict && (
+                <div className="meta-block">
+                  <label>Verdict:</label>
+                  <span className={`verdict-tag verdict-${selectedSubmission.verdict.toLowerCase().replace(/_/g, '-')}`}>
+                    {selectedSubmission.verdict}
+                  </span>
+                </div>
+              )}
+              {selectedSubmission.totalTests != null && (
+                <div className="meta-block">
+                  <label>Tests Passed:</label>
+                  <span>{selectedSubmission.testsPassed || 0} / {selectedSubmission.totalTests}</span>
+                </div>
+              )}
+              {selectedSubmission.executionTimeMs != null && (
+                <div className="meta-block">
+                  <label>Runtime:</label>
+                  <span>{selectedSubmission.executionTimeMs} ms</span>
+                </div>
+              )}
+              <div className="meta-block">
+                <label>Submitted:</label>
+                <span>{new Date(selectedSubmission.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {selectedSubmission.errorMessage && (
+              <div className="error-alert">
+                <strong>Error Output:</strong>
+                <pre>{selectedSubmission.errorMessage}</pre>
+              </div>
+            )}
+
+            <div className="source-code-viewer">
+              <label>Source Code:</label>
+              <pre className="code-block">
+                <code>{selectedSubmission.sourceCode}</code>
+              </pre>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };

@@ -14,19 +14,23 @@ class ApiClient {
   }
 
   private getAccessToken(): string | null {
+    if (typeof localStorage === 'undefined') return null;
     return localStorage.getItem('access_token');
   }
 
   private getRefreshToken(): string | null {
+    if (typeof localStorage === 'undefined') return null;
     return localStorage.getItem('refresh_token');
   }
 
   public setTokens(accessToken: string, refreshToken: string): void {
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('refresh_token', refreshToken);
   }
 
   public clearTokens(): void {
+    if (typeof localStorage === 'undefined') return;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
@@ -62,7 +66,9 @@ class ApiClient {
           return this.request<T>(endpoint, options, true);
         } else {
           this.clearTokens();
-          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+          }
         }
       }
 
@@ -144,6 +150,14 @@ class ApiClient {
   public put<T>(endpoint: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  public patch<T>(endpoint: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

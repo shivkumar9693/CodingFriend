@@ -30,4 +30,8 @@ export const userService = {
   async getLearnerMistakes(): Promise<LearnerMistakeSummary[]> {
     return apiClient.get<LearnerMistakeSummary[]>('/api/users/me/mistakes');
   },
+
+  async getActivityHeatmap(): Promise<import('../types/duel').ActivityHeatmapData> {
+    return apiClient.get<import('../types/duel').ActivityHeatmapData>('/api/users/me/heatmap');
+  },
 };

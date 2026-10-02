@@ -12,6 +12,8 @@ public interface SubmissionService {
 
     SubmissionResponse createSubmission(UUID userId, CreateSubmissionRequest request);
 
+    SubmissionResponse runCode(UUID userId, CreateSubmissionRequest request);
+
     SubmissionResponse getSubmissionById(UUID submissionId, UUID requestingUserId, boolean isAdmin);
 
     PageResponse<SubmissionSummaryResponse> getSubmissions(

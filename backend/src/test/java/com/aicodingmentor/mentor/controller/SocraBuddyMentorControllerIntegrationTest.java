@@ -141,4 +141,41 @@ class SocraBuddyMentorControllerIntegrationTest {
                 .andExpect(jsonPath("$.diagnosisSummary").isNotEmpty())
                 .andExpect(jsonPath("$.socraticGuidance").isNotEmpty());
     }
+
+    @Test
+    @DisplayName("Should reject unauthenticated inline-assist requests with 401/403")
+    void testRequestInlineAssist_unauthenticated_forbidden() throws Exception {
+        com.aicodingmentor.mentor.dto.InlineAssistRequest request = new com.aicodingmentor.mentor.dto.InlineAssistRequest(
+                testProblem.getId(),
+                "class Solution { public boolean isPalindrome(int x) { } }",
+                1,
+                "JAVA"
+        );
+
+        mockMvc.perform(post("/api/mentor/inline-assist")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "learner@test.com", roles = {"LEARNER"})
+    @DisplayName("Should successfully return inline Socratic micro-nudge when authenticated")
+    void testRequestInlineAssist_authenticated_returnsInlineNudge() throws Exception {
+        com.aicodingmentor.mentor.dto.InlineAssistRequest request = new com.aicodingmentor.mentor.dto.InlineAssistRequest(
+                testProblem.getId(),
+                "class Solution { public boolean isPalindrome(int x) { for (int i = 0; i < 10; i++) { for (int j = 0; j < 10; j++) {} } } }",
+                1,
+                "JAVA"
+        );
+
+        mockMvc.perform(post("/api/mentor/inline-assist")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nudgeType").isNotEmpty())
+                .andExpect(jsonPath("$.inlineMessage").isNotEmpty())
+                .andExpect(jsonPath("$.targetLine").value(1))
+                .andExpect(jsonPath("$.revealsSolution").value(false));
+    }
 }

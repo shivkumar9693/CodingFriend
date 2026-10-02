@@ -19,8 +19,8 @@ public record CreateSubmissionRequest(
         @Schema(description = "Learner source code to evaluate", example = "class Solution { public int[] twoSum(int[] nums, int target) { return new int[]{0, 1}; } }")
         String sourceCode,
 
-        @Pattern(regexp = "^(?i)JAVA$", message = "Only 'JAVA' language is currently supported")
-        @Schema(description = "Programming language (currently JAVA only)", example = "JAVA", defaultValue = "JAVA")
+        @Pattern(regexp = "^(?i)(JAVA|PYTHON|CPP|JAVASCRIPT)$", message = "Supported languages: JAVA, PYTHON, CPP, JAVASCRIPT")
+        @Schema(description = "Programming language (JAVA, PYTHON, CPP, JAVASCRIPT)", example = "JAVA", defaultValue = "JAVA")
         String language
 ) {
     public CreateSubmissionRequest {

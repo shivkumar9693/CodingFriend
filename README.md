@@ -28,16 +28,62 @@
 
 ---
 
-## Key Features
+## 🌟 Key Features
 
-- **Authentication & Authorization**: Stateless JWT security with BCrypt password hashing, database-backed refresh token rotation/revocation, and role-based access control (`USER` and `ADMIN`).
-- **Coding Problem Management**: Full problem catalog with pagination, difficulty & tag filtering, Java starter templates, and admin problem curation with secure hidden test suite isolation.
-- **Progressive Socratic Mentorship**: Multi-tier hints (Nudge $\to$ Conceptual $\to$ Algorithmic $\to$ Targeted) powered by local LLMs via Ollama.
-- **Isolated Code Execution**: Secure, sandboxed code runner isolating untrusted learner code from the core application JVM.
-- **Production-Ready Architecture**: Modular monolith backend built with Spring Boot 3, PostgreSQL, Redis, and Flyway.
-- **Modern Interactive Frontend**: Fast, responsive React + TypeScript workspace featuring Monaco Editor.
-- **Zero Paid AI Dependency**: 100% self-hostable with open-weight models (`qwen2.5-coder`, `deepseek-coder`, etc.) running on Ollama.
-- **Strict Privacy & Security**: Hidden test cases never leak to the client; user code never runs inside the main application runtime.
+### 🐞 1. Live Step Debugger & Visual Memory Canvas
+- **Line-by-Line Code Stepping**: Step forward, step backward, or auto-play through Java execution synchronized with Monaco Editor highlights.
+- **Dynamic Multi-Structure Visualizers**:
+  - **1D / 2D Arrays & Pointers**: Visual array representation with animated pointers (`left`, `right`, `slow`, `fast`, `i`, `j`, `mid`).
+  - **Hash Maps & Hash Sets**: Interactive key-value buckets and collision tracking.
+  - **Dynamic Programming (DP) Table**: Grid-based memoization matrix showing cell updates and recurrence values.
+  - **Binary Trees (SVG Canvas)**: Hierarchical node rendering with left/right branch links, subtree highlights, and visited node indicators.
+  - **Graphs (SVG Canvas)**: Node-edge topology graph visualizing BFS/DFS traversals and adjacency lists.
+- **Call Stack & Variable Watch**: Real-time stack frames and primitive/object state inspector.
+- **Socratic Checkpoints**: Pauses at crucial algorithmic decision branches to present pedagogical multiple-choice checks with instant feedback.
+- **Side-by-Side UI**: Seamless left-panel visualizer docked next to the code editor with auto-scrolling execution logs.
+
+### 🤖 2. Progressive Socratic AI Mentorship & SocraBuddy
+- **Multi-Tiered Progressive Hints**: 
+  - **Level 1 (Gentle Nudge)**: Asks an observational question to direct focus.
+  - **Level 2 (Conceptual Insight)**: Explains the underlying computer science pattern or edge case.
+  - **Level 3 (Algorithmic Blueprint)**: Outlines the high-level strategy without revealing code.
+  - **Level 4 (Targeted Pointer)**: Pins down the exact logic or boundary condition flaw.
+- **Mistake Engine & Error Post-Mortems**: Automatically classifies and explains Syntax, Logical, Runtime (NPE, OOB), and Time Limit Exceeded (TLE) errors.
+- **SocraBuddy Live Companion**: Real-time inline code assistance and pedagogical feedback as learners write Java solutions.
+- **100% Free & Self-Hostable**: Powered locally by open-weight models (`qwen2.5-coder`, `deepseek-coder`, `llama3`) via Ollama with zero paid API keys or external lock-in.
+
+### ⚔️ 3. Real-Time 1v1 Coding Duels
+- **Live Matchmaking**: Instant matchmaking queue for 1v1 live algorithm showdowns.
+- **Interactive Duel Arena**: Real-time duel state machine tracking opponent progress (test cases passed, submission state) with live timer.
+- **Competitive Rating System**: Dynamic Elo-style rating adjustments and winner/loser post-duel breakdown.
+
+### 🏆 4. Contests & Competitive Arena
+- **Virtual & Live Contests**: Timed multi-problem coding competitions with synchronized countdowns.
+- **ICPC-Style Leaderboard**: Real-time ranking calculated using solved problem count and penalty minute scoring for failed attempts.
+- **Editorial & Contest History**: Post-contest solution walkthroughs, problem review, and score archiving.
+
+### 🧠 5. Spaced Repetition & AI Post-Mortem Revision Notes
+- **Automated AI Post-Mortem Generation**: Deep failure analysis on unsuccessful submissions with counter-example diagnosis (Failed Input, Expected vs Actual Output).
+- **Execution Flow Contrast**: Visual breakdown comparing the learner's actual code trace against the intended invariant trace to pinpoint algorithmic flaws.
+- **Personalized Revision Notebook**: 1-click saving of post-mortems to a dedicated personal notebook with custom learner reflections, takeaways, and bookmarks.
+- **SM-2 Spaced Repetition Engine**: Scientifically schedules problem revision intervals (`Due for Review`, `To Revise`, `Mastered`) based on learner performance and recall difficulty.
+- **Mistake Taxonomy & Multi-Filter Search**: Categorizes errors into standardized buckets (Logic Error, Boundary Condition, Off-by-One, Runtime Exception, Complexity Detour) with instant full-text and tag search.
+- **Concept Mastery Radar**: Visual metrics tracking learner proficiency and retention across core algorithmic patterns (Two Pointers, Sliding Window, DP, Trees, Graphs, Sorting).
+
+### 🛡️ 6. Sandboxed Code Execution & Async Pipeline
+- **Zero Host Execution**: Untrusted learner code is strictly isolated from the main Spring Boot JVM.
+- **Dockerized Execution Sandbox**: Ephemeral runner with strict cgroup limits (256MB RAM cap, 1 CPU core quota, 5-second timeout, `--network none`, non-root user).
+- **Kafka Async Queue**: Asynchronous submission pipeline decoupling client requests from execution workers for high-throughput scaling.
+- **Hidden Test Privacy**: Public sample test cases are validated on client requests while strict grading suites remain hidden on the server.
+
+### 📊 7. Big-O Complexity Radar & Detour Detection
+- **Algorithmic Complexity Estimation**: Evaluates Time ($O(N)$, $O(N \log N)$, $O(N^2)$) and Space ($O(1)$, $O(N)$) asymptotic complexity.
+- **Detour Warning System**: Detects when a learner's solution takes an overly complex algorithmic path compared to optimal problem constraints.
+
+### 🔐 8. Enterprise Security & Admin Suite
+- **Stateless JWT Security**: BCrypt password hashing, database-backed refresh token rotation/revocation, and role-based access control (`ROLE_USER`, `ROLE_ADMIN`).
+- **Comprehensive Admin Suite**: Full problem CRUD, test case authoring, support ticket management, and learner moderation.
+- **Spring Boot 3 Modular Monolith**: Clean module boundaries (`auth`, `problem`, `submission`, `execution`, `mentor`, `mistake`, `learning`), PostgreSQL 16+ with Flyway migrations, and Redis caching.
 
 ---
 
@@ -47,7 +93,7 @@
 - **Framework**: Spring Boot 3.3.x (Java 17)
 - **Database**: PostgreSQL 16+ with Flyway migrations
 - **Cache & Rate Limiting**: Redis
-- **Message Broker (Planned)**: Apache Kafka
+- **Message Broker**: Apache Kafka (asynchronous submission execution queue)
 - **Security**: Spring Security + JWT
 - **API Spec**: Springdoc OpenAPI / Swagger UI
 - **Testing**: JUnit 5, Mockito, Testcontainers

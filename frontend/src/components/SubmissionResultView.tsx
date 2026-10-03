@@ -117,7 +117,11 @@ export const SubmissionResultView: React.FC<SubmissionResultViewProps> = ({
     let actualOutput = '';
     let expectedOutput = '';
 
-    if (submission.evaluationDetails) {
+    if (submission.verdict === 'COMPILE_ERROR' || (submission.errorMessage && submission.errorMessage.length > 0)) {
+      failedInput = 'Java Compilation Step';
+      actualOutput = submission.errorMessage || 'Syntax Error';
+      expectedOutput = 'Clean compilation with zero syntax errors';
+    } else if (submission.evaluationDetails) {
       try {
         const parsed = JSON.parse(submission.evaluationDetails);
         if (Array.isArray(parsed)) {
@@ -140,8 +144,8 @@ export const SubmissionResultView: React.FC<SubmissionResultViewProps> = ({
         language: submission.language || 'JAVA',
         submittedCode: submission.sourceCode,
         verdict: submission.verdict || submission.status,
-        failedInput: failedInput || 'Sample Test Case',
-        actualOutput: actualOutput || 'Incorrect Return / Crash',
+        failedInput: failedInput || 'Evaluation Suite',
+        actualOutput: actualOutput || 'Incorrect Return / Diagnostic',
         expectedOutput: expectedOutput || 'Expected Invariant Output',
         errorMessage: submission.errorMessage || undefined,
       });

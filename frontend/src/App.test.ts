@@ -122,6 +122,36 @@ describe('Auth Service & LocalStorage Token Management', () => {
     expect(localStorage.getItem('refresh_token')).toBe('google-refresh-jwt');
     expect(JSON.parse(localStorage.getItem('user_data') || '{}')).toEqual(mockGoogleResponse.user);
   });
+
+  it('handles forgotPassword API request and returns response', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          message: 'Reset instructions sent',
+          resetToken: 'test-reset-token-123',
+        },
+      }),
+    } as unknown as Response);
+
+    const response = await authService.forgotPassword('user@example.com');
+    expect(response.message).toBe('Reset instructions sent');
+    expect(response.resetToken).toBe('test-reset-token-123');
+  });
+
+  it('handles resetPassword API request successfully', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    } as unknown as Response);
+
+    await expect(authService.resetPassword({
+      token: 'test-reset-token-123',
+      newPassword: 'NewPassword123!',
+    })).resolves.toBeUndefined();
+  });
 });
 
 describe('Problem Service Contract & Query Building', () => {

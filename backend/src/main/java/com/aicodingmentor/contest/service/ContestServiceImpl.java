@@ -38,19 +38,22 @@ public class ContestServiceImpl implements ContestService {
     private final ContestParticipantRepository contestParticipantRepository;
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public ContestServiceImpl(
             ContestRepository contestRepository,
             ContestProblemRepository contestProblemRepository,
             ContestParticipantRepository contestParticipantRepository,
             ProblemRepository problemRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            org.springframework.context.ApplicationEventPublisher eventPublisher
     ) {
         this.contestRepository = contestRepository;
         this.contestProblemRepository = contestProblemRepository;
         this.contestParticipantRepository = contestParticipantRepository;
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -106,6 +109,16 @@ public class ContestServiceImpl implements ContestService {
         }
 
         Contest saved = contestRepository.save(contest);
+
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new com.aicodingmentor.notification.event.ContestCreatedNotificationEvent(
+                    saved.getId(),
+                    saved.getTitle(),
+                    saved.getStartTime(),
+                    saved.getDurationMinutes()
+            ));
+        }
+
         return ContestDto.from(saved, 0, false);
     }
 

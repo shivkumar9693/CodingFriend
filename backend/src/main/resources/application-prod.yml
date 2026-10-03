@@ -52,6 +52,10 @@ app:
     oauth2:
       google:
         client-id: ${GOOGLE_CLIENT_ID:}
+  frontend-url: ${APP_FRONTEND_URL:https://codingfriend.vercel.app}
+  mail:
+    from: ${APP_MAIL_FROM:CodingFriend <noreply@codingfriend.com>}
+    enabled: ${MAIL_ENABLED:true}
 
 logging:
   level:

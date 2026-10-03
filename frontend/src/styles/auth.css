@@ -457,3 +457,134 @@
   border-bottom-color: #e2e8f0;
 }
 
+/* 8. Forgot & Reset Password Styles */
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.forgot-password-link {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.forgot-password-link:hover {
+  color: #ef4444;
+  text-decoration: underline;
+}
+
+.reset-success-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.25rem 0.5rem;
+}
+
+.reset-success-icon {
+  margin-bottom: 0.85rem;
+  animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.reset-success-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.4rem;
+}
+
+.reset-success-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0 0 1.2rem;
+  max-width: 320px;
+}
+
+.reset-direct-action {
+  width: 100%;
+  padding: 0.85rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+}
+
+.reset-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  margin-bottom: 0.5rem;
+}
+
+.direct-reset-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  padding: 0.65rem 1rem !important;
+  font-size: 0.85rem !important;
+}
+
+.direct-reset-btn:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
+.auth-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.auth-back-link:hover {
+  color: #f1f5f9;
+}
+
+/* Light Theme overrides for Reset Password */
+[data-theme='light'] .reset-success-title,
+.light-theme .reset-success-title {
+  color: #0f172a;
+}
+
+[data-theme='light'] .reset-success-desc,
+.light-theme .reset-success-desc {
+  color: #64748b;
+}
+
+[data-theme='light'] .forgot-password-link,
+.light-theme .forgot-password-link {
+  color: #64748b;
+}
+
+[data-theme='light'] .forgot-password-link:hover,
+.light-theme .forgot-password-link:hover {
+  color: #ef4444;
+}
+
+[data-theme='light'] .auth-back-link:hover,
+.light-theme .auth-back-link:hover {
+  color: #0f172a;
+}
+
+

@@ -21,7 +21,7 @@ export const RegisterPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState<Array<{ field: string; message: string }>>([]);
 
-  const handleGoogleSuccess = async (idToken: string) => {
+  const handleGoogleSuccess = React.useCallback(async (idToken: string) => {
     setErrorMessage('');
     setValidationErrors([]);
     setIsLoading(true);
@@ -38,7 +38,7 @@ export const RegisterPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

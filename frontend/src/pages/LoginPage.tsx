@@ -21,7 +21,7 @@ export const LoginPage: React.FC = () => {
 
   const returnPath = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
-  const handleGoogleSuccess = async (idToken: string) => {
+  const handleGoogleSuccess = React.useCallback(async (idToken: string) => {
     setErrorMessage('');
     setValidationErrors([]);
     setIsLoading(true);
@@ -40,7 +40,7 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loginWithGoogle, navigate, returnPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,9 +125,14 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
+            <div className="form-label-row">
+              <label htmlFor="password" className="form-label">
+                Password
+              </label>
+              <Link to="/forgot-password" className="forgot-password-link">
+                Forgot password?
+              </Link>
+            </div>
             <div className="input-icon-wrapper">
               <Lock className="input-icon" size={16} />
               <input

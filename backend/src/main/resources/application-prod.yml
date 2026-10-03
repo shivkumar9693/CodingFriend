@@ -54,8 +54,11 @@ app:
         client-id: ${GOOGLE_CLIENT_ID:}
   frontend-url: ${APP_FRONTEND_URL:https://codingfriend.vercel.app}
   mail:
-    from: ${APP_MAIL_FROM:CodingFriend <noreply@codingfriend.com>}
+    from: ${APP_MAIL_FROM:CodingFriend <shivkumarthakur9693@gmail.com>}
     enabled: ${MAIL_ENABLED:true}
+
+brevo:
+  api-key: ${BREVO_API_KEY:}
 
 logging:
   level:

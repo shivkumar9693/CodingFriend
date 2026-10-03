@@ -109,6 +109,8 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
 
   const formatCategoryBadge = (cat: string) => {
     switch (cat.toUpperCase()) {
+      case 'SYNTAX_ERROR':
+        return { label: 'Syntax & Compiler Diagnostic', icon: <AlertTriangle size={13} className="text-danger" /> };
       case 'OFF_BY_ONE':
         return { label: 'Off-by-One Boundary', icon: <AlertTriangle size={13} className="text-yellow" /> };
       case 'TIME_LIMIT_EXCEEDED':
@@ -117,11 +119,14 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
         return { label: 'Runtime Fault / Bounds', icon: <AlertTriangle size={13} className="text-danger" /> };
       case 'CORNER_CASE':
         return { label: 'Edge Case Invariant', icon: <Compass size={13} className="text-purple" /> };
+      case 'TYPE_MISMATCH':
+        return { label: 'Type Signature Mismatch', icon: <AlertTriangle size={13} className="text-danger" /> };
       default:
         return { label: 'Algorithmic Discrepancy', icon: <Lightbulb size={13} className="text-yellow" /> };
     }
   };
 
+  const isSyntax = analysis.mistakeCategory.toUpperCase() === 'SYNTAX_ERROR';
   const badgeInfo = formatCategoryBadge(analysis.mistakeCategory);
 
   return (
@@ -133,9 +138,13 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
             <Sparkles size={16} className="text-yellow" />
           </div>
           <div>
-            <h4 className="post-mortem-title">AI Socratic Post-Mortem & Flow Discrepancy</h4>
+            <h4 className="post-mortem-title">
+              {isSyntax ? 'AI Socratic Compiler Post-Mortem' : 'AI Socratic Post-Mortem & Flow Discrepancy'}
+            </h4>
             <span className="post-mortem-subtitle">
-              Counter-example breakdown • What your code did vs. Correct invariant
+              {isSyntax
+                ? 'Syntax diagnostic breakdown • Token mismatch vs. Correct syntax invariant'
+                : 'Counter-example breakdown • What your code did vs. Correct invariant'}
             </span>
           </div>
         </div>
@@ -194,20 +203,26 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
       {/* Counter-Example Input/Output Diff */}
       <div className="counter-example-grid">
         <div className="example-block failed-input-block">
-          <span className="example-tag">⚡ Failed Counter-Example Input</span>
+          <span className="example-tag">
+            {isSyntax ? '⚡ Evaluation Stage' : '⚡ Failed Counter-Example Input'}
+          </span>
           <code className="example-code font-mono">{analysis.failedInput || 'N/A'}</code>
         </div>
 
         <div className="example-outputs-row">
           <div className="example-block actual-output-block">
-            <span className="example-tag text-danger">❌ Your Code Output</span>
+            <span className="example-tag text-danger">
+              {isSyntax ? '❌ Compiler Diagnostics' : '❌ Your Code Output'}
+            </span>
             <code className="example-code font-mono">{analysis.actualOutput || 'Empty / Error'}</code>
           </div>
           <div className="flow-arrow-separator">
             <ArrowRight size={18} />
           </div>
           <div className="example-block expected-output-block">
-            <span className="example-tag text-success">✅ Expected Invariant Output</span>
+            <span className="example-tag text-success">
+              {isSyntax ? '✅ Expected Build State' : '✅ Expected Invariant Output'}
+            </span>
             <code className="example-code font-mono">{analysis.expectedOutput || 'N/A'}</code>
           </div>
         </div>
@@ -220,7 +235,11 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
           <div className="flow-col flow-actual">
             <div className="flow-col-header">
               <AlertTriangle size={14} className="text-warning" />
-              <span>🔍 Actual Execution Path (What Your Code Did)</span>
+              <span>
+                {isSyntax
+                  ? '🔍 Compilation Failure Sequence (What javac Encountered)'
+                  : '🔍 Actual Execution Path (What Your Code Did)'}
+              </span>
             </div>
             <div className="flow-col-body font-mono">
               {analysis.studentFlowTrace.split('\n').map((line, i) => (
@@ -235,7 +254,11 @@ export const AiPostMortemCard: React.FC<AiPostMortemCardProps> = ({
           <div className="flow-col flow-correct">
             <div className="flow-col-header">
               <CheckCircle2 size={14} className="text-success" />
-              <span>💡 Invariant Logic (Why Expected Output Is Achieved)</span>
+              <span>
+                {isSyntax
+                  ? '💡 Correct Syntax Invariant (How to Balance and Structure)'
+                  : '💡 Invariant Logic (Why Expected Output Is Achieved)'}
+              </span>
             </div>
             <div className="flow-col-body font-mono">
               {analysis.correctFlowTrace.split('\n').map((line, i) => (

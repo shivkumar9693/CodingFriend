@@ -67,18 +67,17 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
             try {
                 String systemPrompt = """
                         You are an expert algorithmic mentor and pedagogical tutor.
-                        Analyze the learner's submitted code against the error log or failed counter-example test case.
-                        Do NOT provide full solution code replacement. Instead, generate an insightful, structured dry-run diagnosis.
-                        If the verdict is COMPILE_ERROR or has an Error Log, analyze the exact syntax/type error on that line and explain the syntax contract.
+                        Analyze the learner's submitted code against the failed test case counter-example.
+                        Do NOT give away full replacement code. Instead, generate a structured dry-run comparison.
                         You must respond strictly with valid JSON conforming to this schema:
                         {
-                          "mistakeCategory": "SYNTAX_ERROR | LOGIC_ERROR | OFF_BY_ONE | CORNER_CASE | TIME_LIMIT_EXCEEDED | RUNTIME_EXCEPTION",
-                          "conceptSummary": "Concise 1-sentence diagnostic explanation of where syntax or logic diverged",
-                          "failedInput": "Counter-example input string or Compilation Phase",
-                          "actualOutput": "Learner's output or compiler error message",
-                          "expectedOutput": "Expected output or clean compilation",
-                          "studentFlowTrace": "Step-by-step trace of what student's code executed or where compiler failed",
-                          "correctFlowTrace": "Step-by-step trace of how the invariant or correct syntax resolves the issue",
+                          "mistakeCategory": "LOGIC_ERROR | OFF_BY_ONE | CORNER_CASE | TIME_LIMIT_EXCEEDED | RUNTIME_EXCEPTION | SYNTAX_ERROR",
+                          "conceptSummary": "Concise 1-sentence diagnostic explanation of where logic diverged",
+                          "failedInput": "Counter-example input string",
+                          "actualOutput": "Learner's output",
+                          "expectedOutput": "Expected output",
+                          "studentFlowTrace": "Step-by-step dry run trace of what student's code executed line-by-line",
+                          "correctFlowTrace": "Step-by-step trace of how the invariant/correct algorithm reaches expected output",
                           "keyTakeaway": "1-2 memorable invariant rules to prevent repeating this mistake",
                           "relatedConcepts": ["Concept1", "Concept2"]
                         }
@@ -88,10 +87,10 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
                         Problem: %s
                         Language: %s
                         Verdict: %s
-                        Failed Input / Phase: %s
-                        Actual Output / Error: %s
-                        Expected Invariant: %s
-                        Compiler / Runtime Error Log: %s
+                        Failed Counter-Example Input: %s
+                        Actual Output: %s
+                        Expected Output: %s
+                        Error Log: %s
 
                         Submitted Code:
                         %s
@@ -105,13 +104,13 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
                 if (llmOutput.isPresent()) {
                     JsonNode node = objectMapper.readTree(llmOutput.get());
                     String category = node.has("mistakeCategory") ? node.get("mistakeCategory").asText() : "LOGIC_ERROR";
-                    String summary = node.has("conceptSummary") ? node.get("conceptSummary").asText() : "Discrepancy identified in evaluation.";
+                    String summary = node.has("conceptSummary") ? node.get("conceptSummary").asText() : "Logic discrepancy identified in test case evaluation.";
                     String failedIn = node.has("failedInput") ? node.get("failedInput").asText() : input;
                     String actOut = node.has("actualOutput") ? node.get("actualOutput").asText() : actual;
                     String expOut = node.has("expectedOutput") ? node.get("expectedOutput").asText() : expected;
                     String sFlow = node.has("studentFlowTrace") ? node.get("studentFlowTrace").asText() : "";
                     String cFlow = node.has("correctFlowTrace") ? node.get("correctFlowTrace").asText() : "";
-                    String takeaway = node.has("keyTakeaway") ? node.get("keyTakeaway").asText() : "Always verify invariant conditions before submitting.";
+                    String takeaway = node.has("keyTakeaway") ? node.get("keyTakeaway").asText() : "Always verify invariant conditions against edge cases.";
 
                     List<String> concepts = new ArrayList<>();
                     if (node.has("relatedConcepts") && node.get("relatedConcepts").isArray()) {
@@ -123,7 +122,7 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
                     if (!sFlow.isBlank() && !cFlow.isBlank()) {
                         return new PostMortemAnalysisResponse(
                                 category, summary, failedIn, actOut, expOut, sFlow, cFlow, takeaway,
-                                concepts.isEmpty() ? List.of("Logic Tracing", "Syntax Invariants") : concepts
+                                concepts.isEmpty() ? List.of("Logic Tracing", "Edge Cases") : concepts
                         );
                     }
                 }
@@ -153,23 +152,66 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
         String takeaway;
         List<String> concepts = new ArrayList<>();
 
-        if ("COMPILE_ERROR".equalsIgnoreCase(verdict) || "COMPILATION_ERROR".equalsIgnoreCase(verdict) || (errorMessage != null && errorMessage.contains("error:"))) {
+        boolean isCompileError = "COMPILE_ERROR".equalsIgnoreCase(verdict)
+                || "COMPILATION_ERROR".equalsIgnoreCase(verdict)
+                || "SYNTAX_ERROR".equalsIgnoreCase(verdict)
+                || (errorMessage != null && (errorMessage.contains("error:") || errorMessage.contains("javac") || errorMessage.contains("compile")));
+
+        if (isCompileError) {
             category = "SYNTAX_ERROR";
-            String cleanErr = (errorMessage != null && !errorMessage.isBlank())
-                    ? errorMessage.replaceAll("(?m)^/tmp/[^:]+:", "").trim()
-                    : "Syntax or type signature mismatch in code";
-            if (cleanErr.length() > 150) {
-                cleanErr = cleanErr.substring(0, 150) + "...";
+            String diag = (errorMessage != null && !errorMessage.isBlank()) ? errorMessage : actual;
+            String lineNum = "source";
+            String errorDetail = "syntax or type signature error";
+            String codeSnippet = "";
+
+            // Extract line number and compiler error description
+            java.util.regex.Pattern linePattern = java.util.regex.Pattern.compile("(?:MainDriver|Solution|[a-zA-Z0-9_]+)\\.java:(\\d+):\\s*error:\\s*([^\n\r]+)");
+            java.util.regex.Matcher matcher = linePattern.matcher(diag);
+            if (matcher.find()) {
+                lineNum = "line " + matcher.group(1);
+                errorDetail = matcher.group(2).trim();
+            } else if (diag.contains("error:")) {
+                int errIdx = diag.indexOf("error:");
+                errorDetail = diag.substring(errIdx + 6).split("\n")[0].trim();
             }
 
-            summary = "Syntax or compiler diagnostic encountered during compilation phase.";
-            input = "Java 17 Compilation Phase";
-            actual = cleanErr;
-            expected = "Clean compilation with zero syntax errors";
-            sFlow = String.format("• Step 1: Java compiler parsed the source file.\n• Step 2: Diagnostic encountered: %s\n• Step 3: Compilation halted before bytecode generation.", cleanErr);
-            cFlow = "• Step 1: Ensure all opening brackets `(`, `{`, `[` have corresponding closing pairs `)`, `}`, `]`.\n• Step 2: Verify all statements end with `;` and method arguments match declared types.\n• Step 3: Compiler succeeds and generates valid executable bytecode.";
-            takeaway = "Double check matching parentheses and semicolons on function calls and collection methods before running.";
-            concepts.addAll(List.of("Syntax Invariants", "Expression Grammar", "Compiler Diagnostics"));
+            // Extract code snippet if present
+            if (diag.contains("error:")) {
+                String[] parts = diag.split("\n");
+                for (String p : parts) {
+                    if (!p.contains(".java:") && !p.contains("error:") && !p.trim().isEmpty() && !p.contains("^")) {
+                        codeSnippet = p.trim();
+                        break;
+                    }
+                }
+            }
+
+            summary = String.format("Compiler Syntax Error (%s): %s%s",
+                    lineNum,
+                    errorDetail,
+                    codeSnippet.isBlank() ? "." : " at `" + codeSnippet + "`."
+            );
+            input = "Java 17 Compiler (Syntax Validation)";
+            actual = String.format("%s: %s%s", lineNum, errorDetail, codeSnippet.isBlank() ? "" : " [" + codeSnippet + "]");
+            expected = "0 Compilation Errors (Clean Bytecode Build)";
+
+            sFlow = String.format(
+                    "• Step 1: javac compiler initiated AST tokenization and syntax parsing.\n" +
+                    "• Step 2: Parser encountered syntax anomaly on %s: %s\n" +
+                    "• Step 3: Compilation halted: %s",
+                    lineNum,
+                    codeSnippet.isBlank() ? errorDetail : codeSnippet,
+                    errorDetail
+            );
+
+            cFlow = String.format(
+                    "• Step 1: Verify balanced delimiters (parentheses `()`, brackets `[]`, braces `{}`).\n" +
+                    "• Step 2: Ensure method arguments and expressions are closed before terminating with `;`.\n" +
+                    "• Step 3: Code parses cleanly into valid JVM bytecode with 0 compilation errors."
+            );
+
+            takeaway = "Always balance closing delimiters `)` and `]` before terminating statements with a semicolon `;`.";
+            concepts.addAll(List.of("Syntax Rules", "Compiler Diagnostics", "Delimiter Balancing"));
         } else if ("TIME_LIMIT_EXCEEDED".equalsIgnoreCase(verdict) || (code.contains("for") && code.contains("while") && code.length() > 500)) {
             category = "TIME_LIMIT_EXCEEDED";
             summary = "Execution timed out due to polynomial time complexity $O(N^2)$ or unpruned nested loops on large scale inputs.";
@@ -177,13 +219,29 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
             cFlow = "• Step 1: Hash/Set or Two-Pointer preprocessing achieves $O(N)$ or $O(N \\log N)$ traversal.\n• Step 2: Lookups performed in $O(1)$ amortized time.\n• Outcome: Clean termination within 5ms.";
             takeaway = "When constraints exceed $10^4$, replace nested brute-force loops with a HashMap lookup or Two-Pointer invariant.";
             concepts.addAll(List.of("Time Complexity", "Space-Time Tradeoff", "HashMap Invariants"));
-        } else if ("RUNTIME_ERROR".equalsIgnoreCase(verdict) || (errorMessage != null && errorMessage.contains("IndexOutOfBounds"))) {
-            category = "OFF_BY_ONE";
-            summary = "Array index accessed out of allowable bounds (`i <= length` instead of `i < length` or negative index).";
-            sFlow = String.format("• Step 1: Evaluated input %s.\n• Step 2: Loop boundary reached index equal to array length.\n• Step 3: Attempted direct memory read at invalid offset.\n• Outcome: Runtime exception triggered (`%s`).", input, actual);
-            cFlow = String.format("• Step 1: Guard condition `i < array.length` or strict interval check applied.\n• Step 2: Safely processes elements within [0, N-1].\n• Outcome: Yields valid expected output `%s`.", expected);
-            takeaway = "0-indexed collections span indices $0$ to $N-1$. Use strict inequality `<` or `.length - 1` for terminal bounds.";
-            concepts.addAll(List.of("Boundary Conditions", "Array Bounds", "Loop Invariants"));
+        } else if ("RUNTIME_ERROR".equalsIgnoreCase(verdict) || (errorMessage != null && (errorMessage.contains("Exception") || errorMessage.contains("Error")))) {
+            if (errorMessage != null && errorMessage.contains("NullPointer")) {
+                category = "RUNTIME_EXCEPTION";
+                summary = "NullPointerException triggered by dereferencing an uninitialized reference or missing map key.";
+                sFlow = String.format("• Step 1: Evaluated input: %s\n• Step 2: Attempted method call on null object reference.\n• Step 3: JVM threw NullPointerException.", input);
+                cFlow = "• Step 1: Check for null before invoking methods or use Optional/containsKey guards.\n• Step 2: Safe execution path taken.\n• Outcome: Clean execution yielding expected output.";
+                takeaway = "Always guard object references with null checks or use `containsKey` before accessing map keys.";
+                concepts.addAll(List.of("Null Safety", "Defensive Programming", "Object Initialization"));
+            } else if (errorMessage != null && errorMessage.contains("IndexOutOfBounds")) {
+                category = "OFF_BY_ONE";
+                summary = "Array index accessed out of allowable bounds (`i <= length` instead of `i < length` or negative index).";
+                sFlow = String.format("• Step 1: Evaluated input %s.\n• Step 2: Loop boundary reached index equal to array length.\n• Step 3: Attempted direct memory read at invalid offset.\n• Outcome: Runtime exception triggered (`%s`).", input, actual);
+                cFlow = String.format("• Step 1: Guard condition `i < array.length` or strict interval check applied.\n• Step 2: Safely processes elements within [0, N-1].\n• Outcome: Yields valid expected output `%s`.", expected);
+                takeaway = "0-indexed collections span indices $0$ to $N-1$. Use strict inequality `<` or `.length - 1` for terminal bounds.";
+                concepts.addAll(List.of("Boundary Conditions", "Array Bounds", "Loop Invariants"));
+            } else {
+                category = "RUNTIME_EXCEPTION";
+                summary = String.format("Runtime exception occurred during execution: %s", errorMessage != null ? errorMessage.split("\n")[0] : "Unexpected error");
+                sFlow = String.format("• Step 1: Processing input: %s\n• Step 2: Execution path encountered an unhandled exception.\n• Step 3: Fault: %s", input, errorMessage != null ? errorMessage : actual);
+                cFlow = String.format("• Step 1: Apply input validation and guard edge constraints.\n• Step 2: Execute algorithm within safe boundaries.\n• Step 3: Successfully produces: %s", expected);
+                takeaway = "Test boundary conditions such as 0, empty inputs, single-element collections, and negative numbers.";
+                concepts.addAll(List.of("Runtime Invariants", "Exception Handling", "Edge Case Safety"));
+            }
         } else {
             // General Logic / Counter-Example Discrepancy
             category = "LOGIC_ERROR";

@@ -2,6 +2,8 @@ package com.aicodingmentor.auth.service;
 
 import com.aicodingmentor.auth.domain.RefreshToken;
 import com.aicodingmentor.auth.dto.AuthResponse;
+import com.aicodingmentor.auth.dto.GoogleLoginRequest;
+import com.aicodingmentor.auth.dto.GoogleUserInfo;
 import com.aicodingmentor.auth.dto.LoginRequest;
 import com.aicodingmentor.auth.dto.LogoutRequest;
 import com.aicodingmentor.auth.dto.RefreshTokenRequest;
@@ -12,6 +14,7 @@ import com.aicodingmentor.auth.exception.DuplicateEmailException;
 import com.aicodingmentor.auth.exception.InvalidTokenException;
 import com.aicodingmentor.auth.security.JwtTokenProvider;
 import com.aicodingmentor.auth.security.UserPrincipal;
+import com.aicodingmentor.user.domain.AuthProvider;
 import com.aicodingmentor.user.domain.User;
 import com.aicodingmentor.user.domain.UserRole;
 import com.aicodingmentor.user.repository.UserRepository;
@@ -31,19 +34,22 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final GoogleTokenVerifierService googleTokenVerifierService;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtTokenProvider jwtTokenProvider,
-            RefreshTokenService refreshTokenService
+            RefreshTokenService refreshTokenService,
+            GoogleTokenVerifierService googleTokenVerifierService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
+        this.googleTokenVerifierService = googleTokenVerifierService;
     }
 
     @Override
@@ -86,6 +92,51 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new InvalidTokenException("User account not found"));
 
+        String accessToken = jwtTokenProvider.generateAccessToken(userPrincipal);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return AuthResponse.of(
+                accessToken,
+                refreshToken.getToken(),
+                jwtTokenProvider.getAccessTokenExpirationMs(),
+                UserDto.fromUser(user)
+        );
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
+        GoogleUserInfo googleUserInfo = googleTokenVerifierService.verifyToken(request.idToken());
+        String normalizedEmail = googleUserInfo.email().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .map(existingUser -> {
+                    boolean updated = false;
+                    if (existingUser.getAvatarUrl() == null && googleUserInfo.picture() != null) {
+                        existingUser.setAvatarUrl(googleUserInfo.picture());
+                        updated = true;
+                    }
+                    if (existingUser.getProviderId() == null && googleUserInfo.sub() != null) {
+                        existingUser.setProviderId(googleUserInfo.sub());
+                        updated = true;
+                    }
+                    return updated ? userRepository.save(existingUser) : existingUser;
+                })
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setEmail(normalizedEmail);
+                    newUser.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+                    newUser.setFullName(googleUserInfo.name() != null && !googleUserInfo.name().isBlank()
+                            ? googleUserInfo.name().trim()
+                            : normalizedEmail.split("@")[0]);
+                    newUser.setRole(UserRole.LEARNER);
+                    newUser.setAuthProvider(AuthProvider.GOOGLE);
+                    newUser.setProviderId(googleUserInfo.sub());
+                    newUser.setAvatarUrl(googleUserInfo.picture());
+                    return userRepository.save(newUser);
+                });
+
+        UserPrincipal userPrincipal = UserPrincipal.create(user);
         String accessToken = jwtTokenProvider.generateAccessToken(userPrincipal);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 

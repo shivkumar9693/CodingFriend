@@ -4,10 +4,11 @@ import { LogIn, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
 import { ApiError } from '../services/apiClient';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,6 +20,27 @@ export const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Array<{ field: string; message: string }>>([]);
 
   const returnPath = (location.state as { from?: { pathname: string } })?.from?.pathname;
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    setErrorMessage('');
+    setValidationErrors([]);
+    setIsLoading(true);
+    try {
+      const loggedInUser = await loginWithGoogle(idToken);
+      if (returnPath && returnPath !== '/login' && returnPath !== '/') {
+        navigate(returnPath, { replace: true });
+      } else if (loggedInUser.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setErrorMessage(apiErr.message || 'Google authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +89,19 @@ export const LoginPage: React.FC = () => {
           validationErrors={validationErrors}
           onDismiss={() => setErrorMessage('')}
         />
+
+        <div className="google-auth-container">
+          <GoogleLoginButton
+            text="continue_with"
+            onSuccess={handleGoogleSuccess}
+            onError={(err) => setErrorMessage(err)}
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="auth-divider">
+          <span>or continue with email</span>
+        </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

@@ -53,6 +53,9 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private GoogleTokenVerifierService googleTokenVerifierService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -62,7 +65,8 @@ class AuthServiceTest {
                 passwordEncoder,
                 authenticationManager,
                 jwtTokenProvider,
-                refreshTokenService
+                refreshTokenService,
+                googleTokenVerifierService
         );
     }
 
@@ -189,5 +193,79 @@ class AuthServiceTest {
         authService.logout(request);
 
         verify(refreshTokenService).deleteByToken("token-to-invalidate");
+    }
+
+    @Test
+    @DisplayName("loginWithGoogle provisions new user when email does not exist")
+    void testLoginWithGoogleNewUser() {
+        GoogleLoginRequest request = new GoogleLoginRequest("valid-google-id-token");
+        GoogleUserInfo userInfo = new GoogleUserInfo(
+                "google-sub-123",
+                "googleuser@example.com",
+                true,
+                "Google Learner",
+                "https://example.com/avatar.jpg",
+                "Google",
+                "Learner"
+        );
+
+        when(googleTokenVerifierService.verifyToken("valid-google-id-token")).thenReturn(userInfo);
+        when(userRepository.findByEmail("googleuser@example.com")).thenReturn(Optional.empty());
+
+        User newUser = new User();
+        newUser.setId(UUID.randomUUID());
+        newUser.setEmail("googleuser@example.com");
+        newUser.setFullName("Google Learner");
+        newUser.setRole(UserRole.LEARNER);
+        newUser.setAvatarUrl("https://example.com/avatar.jpg");
+
+        when(userRepository.save(any(User.class))).thenReturn(newUser);
+        when(jwtTokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("google.access.token");
+        when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(900000L);
+
+        RefreshToken refreshToken = new RefreshToken(newUser, "google-refresh-token", Instant.now().plusSeconds(3600));
+        when(refreshTokenService.createRefreshToken(any(User.class))).thenReturn(refreshToken);
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("google.access.token", response.accessToken());
+        assertEquals("google-refresh-token", response.refreshToken());
+        assertEquals("googleuser@example.com", response.user().email());
+        assertEquals("Google Learner", response.user().fullName());
+    }
+
+    @Test
+    @DisplayName("loginWithGoogle logs in existing user and updates avatar if missing")
+    void testLoginWithGoogleExistingUser() {
+        GoogleLoginRequest request = new GoogleLoginRequest("valid-google-id-token");
+        GoogleUserInfo userInfo = new GoogleUserInfo(
+                "google-sub-456",
+                "existing@example.com",
+                true,
+                "Existing User",
+                "https://example.com/new-avatar.jpg",
+                "Existing",
+                "User"
+        );
+
+        User existingUser = new User("existing@example.com", "hash", "Existing User", UserRole.USER);
+        existingUser.setId(UUID.randomUUID());
+        existingUser.setAvatarUrl(null);
+
+        when(googleTokenVerifierService.verifyToken("valid-google-id-token")).thenReturn(userInfo);
+        when(userRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtTokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("existing.access.token");
+        when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(900000L);
+
+        RefreshToken refreshToken = new RefreshToken(existingUser, "existing-refresh-token", Instant.now().plusSeconds(3600));
+        when(refreshTokenService.createRefreshToken(existingUser)).thenReturn(refreshToken);
+
+        AuthResponse response = authService.loginWithGoogle(request);
+
+        assertNotNull(response);
+        assertEquals("existing.access.token", response.accessToken());
+        assertEquals("https://example.com/new-avatar.jpg", response.user().avatarUrl());
     }
 }

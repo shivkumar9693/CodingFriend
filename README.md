@@ -80,8 +80,9 @@
 - **Algorithmic Complexity Estimation**: Evaluates Time ($O(N)$, $O(N \log N)$, $O(N^2)$) and Space ($O(1)$, $O(N)$) asymptotic complexity.
 - **Detour Warning System**: Detects when a learner's solution takes an overly complex algorithmic path compared to optimal problem constraints.
 
-### 🔐 8. Enterprise Security & Admin Suite
-- **Stateless JWT Security**: BCrypt password hashing, database-backed refresh token rotation/revocation, and role-based access control (`ROLE_USER`, `ROLE_ADMIN`).
+### 🔐 8. Enterprise Security & Google OAuth 2.0
+- **Google OAuth 2.0 & One-Tap Integration**: Seamless Sign-in and Sign-up with Google via Google Identity Services (GIS) with backend cryptographic ID token verification and automatic user provisioning.
+- **Stateless JWT Security**: BCrypt password hashing, database-backed refresh token rotation/revocation, and role-based access control (`ROLE_USER`, `ROLE_ADMIN`, `ROLE_LEARNER`).
 - **Comprehensive Admin Suite**: Full problem CRUD, test case authoring, support ticket management, and learner moderation.
 - **Spring Boot 3 Modular Monolith**: Clean module boundaries (`auth`, `problem`, `submission`, `execution`, `mentor`, `mistake`, `learning`), PostgreSQL 16+ with Flyway migrations, and Redis caching.
 

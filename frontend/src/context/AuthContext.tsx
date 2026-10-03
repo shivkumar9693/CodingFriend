@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<User>;
+  loginWithGoogle: (idToken: string) => Promise<User>;
   register: (data: RegisterRequest) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -35,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName: profile.fullName,
         bio: profile.bio,
         githubUsername: profile.githubUsername,
+        avatarUrl: profile.avatarUrl,
         role: profile.role,
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
@@ -66,6 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return response.user;
   };
 
+  const loginWithGoogle = async (idToken: string): Promise<User> => {
+    const response = await authService.loginWithGoogle(idToken);
+    setUser(response.user);
+    return response.user;
+  };
+
   const register = async (data: RegisterRequest): Promise<User> => {
     const response = await authService.register(data);
     setUser(response.user);
@@ -84,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshProfile,

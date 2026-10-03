@@ -1,6 +1,7 @@
 package com.aicodingmentor.auth.controller;
 
 import com.aicodingmentor.auth.dto.AuthResponse;
+import com.aicodingmentor.auth.dto.GoogleLoginRequest;
 import com.aicodingmentor.auth.dto.LoginRequest;
 import com.aicodingmentor.auth.dto.LogoutRequest;
 import com.aicodingmentor.auth.dto.RefreshTokenRequest;
@@ -42,6 +43,13 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("User authenticated successfully", response));
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Authenticate with Google", description = "Verifies Google ID token and returns application access & refresh tokens")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthResponse response = authService.loginWithGoogle(request);
+        return ResponseEntity.ok(ApiResponse.success("Authenticated with Google successfully", response));
     }
 
     @PostMapping("/refresh")

@@ -1,6 +1,7 @@
 package com.aicodingmentor.auth.controller;
 
 import com.aicodingmentor.auth.dto.AuthResponse;
+import com.aicodingmentor.auth.dto.GoogleLoginRequest;
 import com.aicodingmentor.auth.dto.LoginRequest;
 import com.aicodingmentor.auth.dto.LogoutRequest;
 import com.aicodingmentor.auth.dto.RefreshTokenRequest;
@@ -205,5 +206,40 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Logged out successfully"));
 
         verify(authService).logout(any(LogoutRequest.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/google returns 200 OK with tokens on valid Google ID token")
+    void testLoginWithGoogleSuccess() throws Exception {
+        GoogleLoginRequest request = new GoogleLoginRequest("valid.google.id.token");
+        UserDto userDto = new UserDto(UUID.randomUUID(), "googleuser@example.com", "Google Learner", UserRole.LEARNER, "https://avatar.url", null);
+        AuthResponse authResponse = AuthResponse.of("google.access.token", "google.refresh.token", 900000L, userDto);
+
+        when(authService.loginWithGoogle(any(GoogleLoginRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("google.access.token"))
+                .andExpect(jsonPath("$.data.refreshToken").value("google.refresh.token"))
+                .andExpect(jsonPath("$.data.user.email").value("googleuser@example.com"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/google returns 401 Unauthorized when Google token is invalid")
+    void testLoginWithGoogleInvalidToken() throws Exception {
+        GoogleLoginRequest request = new GoogleLoginRequest("invalid.google.token");
+
+        when(authService.loginWithGoogle(any(GoogleLoginRequest.class)))
+                .thenThrow(new InvalidTokenException("Google token is invalid, expired, or revoked"));
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.status").value(401));
     }
 }

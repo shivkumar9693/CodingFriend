@@ -10,6 +10,14 @@ export const authService = {
     return response;
   },
 
+  async loginWithGoogle(idToken: string): Promise<AuthResponse> {
+    const raw = await apiClient.post<AuthResponse>('/api/auth/google', { idToken });
+    const response: AuthResponse = (raw as unknown as { data: AuthResponse }).data || raw;
+    apiClient.setTokens(response.accessToken, response.refreshToken);
+    localStorage.setItem('user_data', JSON.stringify(response.user));
+    return response;
+  },
+
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const raw = await apiClient.post<AuthResponse>('/api/auth/register', data);
     const response: AuthResponse = (raw as unknown as { data: AuthResponse }).data || raw;

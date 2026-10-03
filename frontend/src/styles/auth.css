@@ -344,3 +344,116 @@
 .light-theme .auth-link:hover {
   color: #dc2626;
 }
+
+/* 7. Google OAuth & Auth Divider Styles */
+.google-auth-container {
+  width: 100%;
+  margin-bottom: 0.85rem;
+}
+
+.google-auth-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.google-btn-rendered {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.google-btn-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.google-custom-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  background: #151926;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md, 0.5rem);
+  color: #f1f5f9;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.google-custom-btn:hover:not(:disabled) {
+  background: #1c2233;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.google-custom-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.google-custom-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.google-icon-svg {
+  flex-shrink: 0;
+}
+
+/* Auth Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.75rem 0 1rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-divider span {
+  padding: 0 0.65rem;
+}
+
+/* Light Theme Overrides for Google Auth */
+[data-theme='light'] .google-custom-btn,
+.light-theme .google-custom-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='light'] .google-custom-btn:hover:not(:disabled),
+.light-theme .google-custom-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .auth-divider,
+.light-theme .auth-divider {
+  color: #94a3b8;
+}
+
+[data-theme='light'] .auth-divider::before,
+[data-theme='light'] .auth-divider::after,
+.light-theme .auth-divider::before,
+.light-theme .auth-divider::after {
+  border-bottom-color: #e2e8f0;
+}
+

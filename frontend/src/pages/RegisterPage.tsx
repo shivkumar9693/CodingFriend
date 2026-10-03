@@ -4,10 +4,11 @@ import { UserPlus, Lock, Mail, User as UserIcon, ArrowRight, Eye, EyeOff } from 
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
 import { ApiError } from '../services/apiClient';
 
 export const RegisterPage: React.FC = () => {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState('');
@@ -19,6 +20,25 @@ export const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState<Array<{ field: string; message: string }>>([]);
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    setErrorMessage('');
+    setValidationErrors([]);
+    setIsLoading(true);
+    try {
+      const loggedInUser = await loginWithGoogle(idToken);
+      if (loggedInUser.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setErrorMessage(apiErr.message || 'Google registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +91,19 @@ export const RegisterPage: React.FC = () => {
           validationErrors={validationErrors}
           onDismiss={() => setErrorMessage('')}
         />
+
+        <div className="google-auth-container">
+          <GoogleLoginButton
+            text="signup_with"
+            onSuccess={handleGoogleSuccess}
+            onError={(err) => setErrorMessage(err)}
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="auth-divider">
+          <span>or register with email</span>
+        </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

@@ -27,7 +27,7 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
     @Column(name = "full_name", nullable = false, length = 150)
@@ -36,6 +36,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role = UserRole.LEARNER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 50)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
 
     @Column(name = "bio", length = 500)
     private String bio;
@@ -221,6 +228,22 @@ public class User {
 
     public void setMaxStreak(Integer maxStreak) {
         this.maxStreak = maxStreak;
+    }
+
+    public AuthProvider getAuthProvider() {
+        return authProvider != null ? authProvider : AuthProvider.LOCAL;
+    }
+
+    public void setAuthProvider(AuthProvider authProvider) {
+        this.authProvider = authProvider;
+    }
+
+    public String getProviderId() {
+        return providerId;
+    }
+
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
     }
 
     public Instant getCreatedAt() {

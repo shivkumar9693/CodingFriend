@@ -92,6 +92,36 @@ describe('Auth Service & LocalStorage Token Management', () => {
     const retrieved = authService.getCurrentUser();
     expect(retrieved).toEqual(mockUser);
   });
+
+  it('performs Google login and sets tokens and user_data in localStorage', async () => {
+    const mockGoogleResponse = {
+      accessToken: 'google-access-jwt',
+      refreshToken: 'google-refresh-jwt',
+      tokenType: 'Bearer',
+      expiresIn: 900000,
+      user: {
+        id: 'usr-google-1',
+        email: 'googleuser@example.com',
+        fullName: 'Google User',
+        role: 'LEARNER' as const,
+        avatarUrl: 'https://lh3.googleusercontent.com/a/sample',
+      },
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: mockGoogleResponse }),
+    } as unknown as Response);
+
+    const result = await authService.loginWithGoogle('sample-google-id-token');
+
+    expect(result.accessToken).toBe('google-access-jwt');
+    expect(result.user.email).toBe('googleuser@example.com');
+    expect(localStorage.getItem('access_token')).toBe('google-access-jwt');
+    expect(localStorage.getItem('refresh_token')).toBe('google-refresh-jwt');
+    expect(JSON.parse(localStorage.getItem('user_data') || '{}')).toEqual(mockGoogleResponse.user);
+  });
 });
 
 describe('Problem Service Contract & Query Building', () => {

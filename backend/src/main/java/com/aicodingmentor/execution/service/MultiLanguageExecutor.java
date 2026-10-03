@@ -141,13 +141,23 @@ public class MultiLanguageExecutor implements CodeExecutor {
             );
             pb = new ProcessBuilder(cmd);
             pb.directory(workspace.toFile());
-            pb.environment().clear();
+            sanitizeEnvironment(pb);
         }
 
         return runProcess(pb, request, runStart);
     }
 
     private CompilationResult compileJava(Path workspace, Path sourceFile, String className) throws IOException, InterruptedException {
+        // Step 1: Try in-process JavaCompiler (instant <5ms compilation, immune to process timeout or missing shell PATH)
+        javax.tools.JavaCompiler compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
+        if (compiler != null) {
+            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+            int exitCode = compiler.run(null, stdout, stderr, "-encoding", "UTF-8", "-d", workspace.toAbsolutePath().toString(), sourceFile.toAbsolutePath().toString());
+            return new CompilationResult(exitCode == 0, stdout.toString(StandardCharsets.UTF_8), stderr.toString(StandardCharsets.UTF_8), exitCode);
+        }
+
+        // Step 2: Fallback to subprocess if in-process compiler is unavailable
         ProcessBuilder pb;
         if (dockerAvailable) {
             List<String> cmd = List.of(
@@ -165,7 +175,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             List<String> cmd = List.of(javacPath, "-encoding", "UTF-8", "-d", workspace.toAbsolutePath().toString(), sourceFile.toAbsolutePath().toString());
             pb = new ProcessBuilder(cmd);
             pb.directory(workspace.toFile());
-            pb.environment().clear();
+            sanitizeEnvironment(pb);
         }
         return runCompilationProcess(pb);
     }
@@ -196,7 +206,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             List<String> cmd = List.of(pythonCmd, "-u", scriptFile.toAbsolutePath().toString());
             pb = new ProcessBuilder(cmd);
             pb.directory(workspace.toFile());
-            pb.environment().clear();
+            sanitizeEnvironment(pb);
         }
 
         return runProcess(pb, request, runStart);
@@ -229,7 +239,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             List<String> cmd = List.of("g++", "-O3", "-std=c++17", "solution.cpp", "-o", outputBinary);
             pbCompile = new ProcessBuilder(cmd);
             pbCompile.directory(workspace.toFile());
-            pbCompile.environment().clear();
+            sanitizeEnvironment(pbCompile);
         }
 
         CompilationResult compileResult = runCompilationProcess(pbCompile);
@@ -258,7 +268,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             List<String> cmd = List.of(binPath.toAbsolutePath().toString());
             pbRun = new ProcessBuilder(cmd);
             pbRun.directory(workspace.toFile());
-            pbRun.environment().clear();
+            sanitizeEnvironment(pbRun);
         }
 
         return runProcess(pbRun, request, runStart);
@@ -289,7 +299,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             List<String> cmd = List.of("node", scriptFile.toAbsolutePath().toString());
             pb = new ProcessBuilder(cmd);
             pb.directory(workspace.toFile());
-            pb.environment().clear();
+            sanitizeEnvironment(pb);
         }
 
         return runProcess(pb, request, runStart);
@@ -427,6 +437,28 @@ public class MultiLanguageExecutor implements CodeExecutor {
 
     private boolean isWindows() {
         return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    private void sanitizeEnvironment(ProcessBuilder pb) {
+        var env = pb.environment();
+        String path = env.get("PATH");
+        String javaHome = env.get("JAVA_HOME");
+        String temp = env.get("TMPDIR") != null ? env.get("TMPDIR") : env.get("TEMP");
+        String systemRoot = env.get("SystemRoot") != null ? env.get("SystemRoot") : env.get("SYSTEMROOT");
+        String lang = env.get("LANG");
+        String lcAll = env.get("LC_ALL");
+
+        env.clear();
+        if (path != null) env.put("PATH", path);
+        if (javaHome != null) env.put("JAVA_HOME", javaHome);
+        if (temp != null) {
+            env.put("TMPDIR", temp);
+            env.put("TEMP", temp);
+            env.put("TMP", temp);
+        }
+        if (systemRoot != null) env.put("SystemRoot", systemRoot);
+        if (lang != null) env.put("LANG", lang);
+        if (lcAll != null) env.put("LC_ALL", lcAll);
     }
 
     private boolean checkDockerAvailability() {

@@ -1,11 +1,13 @@
 package com.aicodingmentor.learning.service;
 
+import com.aicodingmentor.common.config.RedisCacheConfig;
 import com.aicodingmentor.execution.model.EvaluationVerdict;
 import com.aicodingmentor.learning.dto.LeaderboardEntryResponse;
 import com.aicodingmentor.submission.repository.SubmissionRepository;
 import com.aicodingmentor.user.domain.User;
 import com.aicodingmentor.user.domain.UserRole;
 import com.aicodingmentor.user.repository.UserRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     }
 
     @Override
+    @Cacheable(value = RedisCacheConfig.CACHE_LEADERBOARD, key = "'global'", unless = "#result == null")
     public List<LeaderboardEntryResponse> getGlobalLeaderboard() {
         List<User> users = userRepository.findAll();
         List<LeaderboardEntryResponse> entries = new ArrayList<>();

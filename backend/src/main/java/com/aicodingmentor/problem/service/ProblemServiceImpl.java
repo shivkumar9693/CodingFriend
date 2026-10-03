@@ -53,6 +53,7 @@ public class ProblemServiceImpl implements ProblemService {
     }
 
     @Override
+    @Cacheable(value = CACHE_PROBLEMS, key = "{#difficulty, #tag, #pageable.pageNumber, #pageable.pageSize, #pageable.sort.toString()}", unless = "#result == null")
     @Transactional(readOnly = true)
     public PageResponse<ProblemSummaryResponse> getProblems(ProblemDifficulty difficulty, String tag, Pageable pageable) {
         Specification<Problem> spec = ProblemSpecifications.filterBy(difficulty, tag);

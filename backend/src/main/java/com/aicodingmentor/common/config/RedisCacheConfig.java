@@ -39,6 +39,8 @@ public class RedisCacheConfig implements CachingConfigurer {
     public static final String CACHE_PROBLEMS = "problems";
     public static final String CACHE_PROBLEM_DETAILS = "problem-details";
     public static final String CACHE_SUBMISSION_STATUS = "submission-status";
+    public static final String CACHE_LEADERBOARD = "leaderboard";
+    public static final String CACHE_CONTESTS = "contests";
 
     @Bean
     public RedisCacheConfiguration defaultCacheConfiguration() {
@@ -63,11 +65,15 @@ public class RedisCacheConfig implements CachingConfigurer {
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(RedisCacheConfiguration defaultCacheConfiguration) {
         return builder -> builder
                 .withCacheConfiguration(CACHE_PROBLEMS,
-                        defaultCacheConfiguration.entryTtl(Duration.ofHours(1)))
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(30)))
                 .withCacheConfiguration(CACHE_PROBLEM_DETAILS,
                         defaultCacheConfiguration.entryTtl(Duration.ofHours(1)))
                 .withCacheConfiguration(CACHE_SUBMISSION_STATUS,
-                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(10)));
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration(CACHE_LEADERBOARD,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration(CACHE_CONTESTS,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(5)));
     }
 
     @Override

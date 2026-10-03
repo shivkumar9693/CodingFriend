@@ -6,10 +6,31 @@ spring:
     name: ai-coding-mentor-backend
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
+  mail:
+    host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp.gmail.com}}
+    port: ${SPRING_MAIL_PORT:${MAIL_PORT:587}}
+    username: ${SPRING_MAIL_USERNAME:${MAIL_USERNAME:}}
+    password: ${SPRING_MAIL_PASSWORD:${MAIL_PASSWORD:}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   data:
     redis:
       repositories:
         enabled: false
+
+app:
+  mail:
+    from: ${APP_MAIL_FROM:CodingFriend <noreply@codingfriend.com>}
+    enabled: ${MAIL_ENABLED:true}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
 
 management:
   endpoints:

@@ -1,11 +1,15 @@
 package com.aicodingmentor.auth.controller;
 
 import com.aicodingmentor.auth.dto.AuthResponse;
+import com.aicodingmentor.auth.dto.ChangePasswordRequest;
+import com.aicodingmentor.auth.dto.ForgotPasswordRequest;
+import com.aicodingmentor.auth.dto.ForgotPasswordResponse;
 import com.aicodingmentor.auth.dto.GoogleLoginRequest;
 import com.aicodingmentor.auth.dto.LoginRequest;
 import com.aicodingmentor.auth.dto.LogoutRequest;
 import com.aicodingmentor.auth.dto.RefreshTokenRequest;
 import com.aicodingmentor.auth.dto.RegisterRequest;
+import com.aicodingmentor.auth.dto.ResetPasswordRequest;
 import com.aicodingmentor.auth.dto.TokenRefreshResponse;
 import com.aicodingmentor.auth.dto.UserDto;
 import com.aicodingmentor.auth.exception.DuplicateEmailException;
@@ -16,6 +20,7 @@ import com.aicodingmentor.auth.security.JwtAuthenticationEntryPoint;
 import com.aicodingmentor.auth.security.JwtAuthenticationFilter;
 import com.aicodingmentor.auth.security.JwtTokenProvider;
 import com.aicodingmentor.auth.service.AuthService;
+import com.aicodingmentor.auth.service.PasswordResetService;
 import com.aicodingmentor.common.error.GlobalExceptionHandler;
 import com.aicodingmentor.user.domain.UserRole;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,6 +73,9 @@ class AuthControllerTest {
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockBean
+    private PasswordResetService passwordResetService;
 
     @Test
     @DisplayName("POST /api/auth/register returns 201 Created on valid registration")
@@ -241,5 +249,40 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/forgot-password returns 200 OK with success message")
+    void testForgotPasswordSuccess() throws Exception {
+        ForgotPasswordRequest request = new ForgotPasswordRequest("learner@example.com");
+        ForgotPasswordResponse response = new ForgotPasswordResponse(
+                "If an account exists with this email, password reset instructions have been sent.",
+                "mock-reset-token-123"
+        );
+
+        when(passwordResetService.requestPasswordReset(any(ForgotPasswordRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.message").value(containsString("instructions have been sent")))
+                .andExpect(jsonPath("$.data.resetToken").value("mock-reset-token-123"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password returns 200 OK when password is reset")
+    void testResetPasswordSuccess() throws Exception {
+        ResetPasswordRequest request = new ResetPasswordRequest("valid-token-123", "NewSecretPass123!");
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Password has been successfully reset. You may now sign in with your new password."));
+
+        verify(passwordResetService).resetPassword(any(ResetPasswordRequest.class));
     }
 }

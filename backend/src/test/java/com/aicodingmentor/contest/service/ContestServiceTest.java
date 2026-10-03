@@ -50,6 +50,9 @@ class ContestServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private ContestServiceImpl contestService;
 
     @BeforeEach
@@ -59,7 +62,8 @@ class ContestServiceTest {
                 contestProblemRepository,
                 contestParticipantRepository,
                 problemRepository,
-                userRepository
+                userRepository,
+                eventPublisher
         );
     }
 

@@ -50,10 +50,27 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const clientId = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_GOOGLE_CLIENT_ID || '';
 
+  // Use refs for callbacks to avoid re-triggering effects on parent component re-renders
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  // Track if button has already been rendered for current clientId and text
+  const renderedKeyRef = useRef<string>('');
+
   useEffect(() => {
-    // Check if script already exists
+    // Check if GSI is already available globally
     if (window.google?.accounts?.id) {
       setIsGsiLoaded(true);
+      return;
+    }
+
+    // Check if script tag is already in DOM
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => setIsGsiLoaded(true));
       return;
     }
 
@@ -68,16 +85,17 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
       console.warn('Google Identity Services SDK could not be loaded.');
     };
     document.head.appendChild(script);
-
-    return () => {
-      // Clean up if component unmounts early
-    };
   }, []);
 
   useEffect(() => {
     if (!isGsiLoaded || !buttonRef.current) return;
 
     if (!clientId || clientId.startsWith('your_google')) {
+      return;
+    }
+
+    const currentKey = `${clientId}:${text}`;
+    if (renderedKeyRef.current === currentKey && buttonRef.current.children.length > 0) {
       return;
     }
 
@@ -88,15 +106,15 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
           if (response.credential) {
             setIsProcessing(true);
             try {
-              await onSuccess(response.credential);
+              await onSuccessRef.current(response.credential);
             } catch (err: unknown) {
               const message = err instanceof Error ? err.message : 'Google authentication failed. Please try again.';
-              onError?.(message);
+              onErrorRef.current?.(message);
             } finally {
               setIsProcessing(false);
             }
           } else {
-            onError?.('Google authentication could not be completed.');
+            onErrorRef.current?.('Google authentication could not be completed.');
           }
         },
       });
@@ -111,11 +129,12 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
           width: '100%',
           logo_alignment: 'left',
         });
+        renderedKeyRef.current = currentKey;
       }
     } catch (err) {
       console.error('Failed to initialize Google Sign-in button', err);
     }
-  }, [isGsiLoaded, clientId, text, onSuccess, onError]);
+  }, [isGsiLoaded, clientId, text]);
 
   const handleCustomButtonClick = () => {
     if (!clientId || clientId.startsWith('your_google')) {

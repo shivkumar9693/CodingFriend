@@ -93,7 +93,7 @@ class OpenAiCompatibleMentorModelClientTest {
 
         assertThat(result).isPresent();
         assertThat(result.get()).contains("Check your loop boundary.");
-        assertThat(client.getModelName()).isEqualTo("llama-3.1-8b-instant");
+        assertThat(client.getModelName()).isEqualTo("llama-3.3-70b-specdec");
     }
 
     @Test
@@ -166,6 +166,6 @@ class OpenAiCompatibleMentorModelClientTest {
 
         assertThat(geminiClient.isConfigured()).isTrue();
         assertThat(geminiClient.getBaseUrl()).isEqualTo("https://generativelanguage.googleapis.com/v1beta/openai");
-        assertThat(geminiClient.getModelName()).isEqualTo("gemini-1.5-flash");
+        assertThat(geminiClient.getModelName()).isEqualTo("gemini-1.5-flash-latest");
     }
 }

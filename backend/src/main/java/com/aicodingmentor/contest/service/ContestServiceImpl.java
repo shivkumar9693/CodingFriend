@@ -1,5 +1,6 @@
 package com.aicodingmentor.contest.service;
 
+import com.aicodingmentor.common.config.RedisCacheConfig;
 import com.aicodingmentor.common.error.ApiException;
 import com.aicodingmentor.common.error.ResourceNotFoundException;
 import com.aicodingmentor.contest.domain.Contest;
@@ -17,6 +18,8 @@ import com.aicodingmentor.problem.domain.Problem;
 import com.aicodingmentor.problem.repository.ProblemRepository;
 import com.aicodingmentor.user.domain.User;
 import com.aicodingmentor.user.repository.UserRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -148,6 +151,7 @@ public class ContestServiceImpl implements ContestService {
     }
 
     @Override
+    @Cacheable(value = RedisCacheConfig.CACHE_CONTESTS, key = "'leaderboard_' + #slug", unless = "#result == null")
     @Transactional(readOnly = true)
     public ContestLeaderboardDto getLeaderboard(String slug) {
         Contest contest = contestRepository.findBySlug(slug)
@@ -185,6 +189,7 @@ public class ContestServiceImpl implements ContestService {
     }
 
     @Override
+    @CacheEvict(value = RedisCacheConfig.CACHE_CONTESTS, allEntries = true)
     public void recordSuccessfulProblemSubmission(UUID contestId, UUID problemId, UUID userId, int minutesFromStart) {
         if (contestId == null || problemId == null || userId == null) return;
 

@@ -38,6 +38,6 @@ class GlobalExceptionHandlerTest {
         assertFalse(response.getBody().success());
         assertEquals(500, response.getBody().status());
         assertEquals("Internal Server Error", response.getBody().error());
-        assertEquals("Unexpected error", response.getBody().message());
+        assertEquals("An unexpected error occurred. Please try again later.", response.getBody().message());
     }
 }

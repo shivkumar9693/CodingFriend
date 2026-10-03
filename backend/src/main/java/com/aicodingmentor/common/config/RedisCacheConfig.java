@@ -56,6 +56,7 @@ public class RedisCacheConfig implements CachingConfigurer {
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(cacheObjectMapper);
 
         return RedisCacheConfiguration.defaultCacheConfig()
+                .prefixCacheNameWith("v2:")
                 .entryTtl(Duration.ofHours(1))
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))

@@ -37,11 +37,20 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
+    private static final List<String> CANDIDATE_FALLBACK_MODELS = List.of(
+            "llama-3.1-8b-instant",
+            "llama3-70b-8192",
+            "llama3-8b-8192",
+            "gemma2-9b-it",
+            "mixtral-8x7b-32768",
+            "qwen/qwen3.8-27b"
+    );
+
     @Autowired
     public OpenAiCompatibleMentorModelClient(
             @Value("${app.mentor.cloud.api-key:${GROQ_API_KEY:${AI_API_KEY:}}}") String apiKey,
             @Value("${app.mentor.cloud.base-url:${GROQ_BASE_URL:${AI_BASE_URL:https://api.groq.com/openai/v1}}}") String baseUrl,
-            @Value("${app.mentor.cloud.model:${GROQ_MODEL:${AI_MODEL:llama-3.3-70b-versatile}}}") String model,
+            @Value("${app.mentor.cloud.model:${GROQ_MODEL:${AI_MODEL:llama-3.1-8b-instant}}}") String model,
             @Value("${app.mentor.cloud.timeout-seconds:${AI_TIMEOUT_SECONDS:30}}") int timeoutSeconds,
             ObjectMapper objectMapper
     ) {
@@ -70,7 +79,7 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
     ) {
         this.apiKey = apiKey != null ? apiKey.trim() : "";
         this.baseUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.replaceAll("/+$", "") : "https://api.groq.com/openai/v1";
-        this.model = (model != null && !model.isBlank()) ? model : "llama-3.3-70b-versatile";
+        this.model = (model != null && !model.isBlank()) ? model : "llama-3.1-8b-instant";
         this.timeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
@@ -93,15 +102,38 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
             return Optional.empty();
         }
 
+        // Try primary configured model first
+        Optional<String> result = executeInference(this.model, systemPrompt, userPrompt);
+        if (result.isPresent()) {
+            return result;
+        }
+
+        // If primary failed (e.g. 404 model_not_found), attempt candidate fallback models
+        for (String fallbackModel : CANDIDATE_FALLBACK_MODELS) {
+            if (fallbackModel.equalsIgnoreCase(this.model)) {
+                continue;
+            }
+            log.info("Attempting Cloud AI inference with candidate fallback model [{}]...", fallbackModel);
+            Optional<String> fallbackResult = executeInference(fallbackModel, systemPrompt, userPrompt);
+            if (fallbackResult.isPresent()) {
+                log.info("Fallback model [{}] succeeded.", fallbackModel);
+                return fallbackResult;
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<String> executeInference(String targetModel, String systemPrompt, String userPrompt) {
         long startTime = System.currentTimeMillis();
         int promptSize = (systemPrompt != null ? systemPrompt.length() : 0) + (userPrompt != null ? userPrompt.length() : 0);
 
         log.debug("Dispatching LLM inference request to Cloud AI API [{}]. Model: [{}], Total Prompt Chars: [{}]",
-                baseUrl, model, promptSize);
+                baseUrl, targetModel, promptSize);
 
         try {
             Map<String, Object> payloadMap = Map.of(
-                    "model", model,
+                    "model", targetModel,
                     "messages", List.of(
                             Map.of("role", "system", "content", systemPrompt != null ? systemPrompt : ""),
                             Map.of("role", "user", "content", userPrompt != null ? userPrompt : "")
@@ -129,30 +161,30 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
                     JsonNode messageNode = root.get("choices").get(0).get("message");
                     if (messageNode != null && messageNode.has("content")) {
                         String rawContent = messageNode.get("content").asText();
-                        log.info("Cloud AI inference completed successfully in [{}ms] for model [{}]", latencyMs, model);
+                        log.info("Cloud AI inference completed successfully in [{}ms] for model [{}]", latencyMs, targetModel);
                         return Optional.ofNullable(rawContent);
                     }
                 }
                 log.warn("Cloud AI returned 200 OK but payload format unexpected in [{}ms]", latencyMs);
             } else if (response.statusCode() == 429) {
-                log.warn("Cloud AI rate limit reached (HTTP 429) in [{}ms]. Engaging fallback.", latencyMs);
+                log.warn("Cloud AI rate limit reached (HTTP 429) in [{}ms] for model [{}].", latencyMs, targetModel);
             } else {
-                log.warn("Cloud AI server returned non-200 status [{}] in [{}ms]. Error: {}",
-                        response.statusCode(), latencyMs, sanitizeErrorMessage(response.body()));
+                log.warn("Cloud AI server returned non-200 status [{}] in [{}ms] for model [{}]. Error: {}",
+                        response.statusCode(), latencyMs, targetModel, sanitizeErrorMessage(response.body()));
             }
         } catch (HttpTimeoutException ex) {
             long latencyMs = System.currentTimeMillis() - startTime;
-            log.warn("Cloud AI inference timed out after [{}ms] (limit: {}s). Engaging fallback.",
-                    latencyMs, timeout.toSeconds());
+            log.warn("Cloud AI inference timed out after [{}ms] for model [{}] (limit: {}s).",
+                    latencyMs, targetModel, timeout.toSeconds());
         } catch (ConnectException ex) {
-            log.warn("Cloud AI host unreachable at [{}] ({}). Engaging fallback.", baseUrl, ex.getMessage());
+            log.warn("Cloud AI host unreachable at [{}] ({}).", baseUrl, ex.getMessage());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             log.warn("Cloud AI request interrupted: {}", ex.getMessage());
         } catch (IOException ex) {
-            log.warn("I/O error communicating with Cloud AI API [{}]: {}", baseUrl, ex.getMessage());
+            log.warn("I/O error communicating with Cloud AI API [{}] for model [{}]: {}", baseUrl, targetModel, ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Unexpected error during Cloud AI inference: {}", ex.getMessage());
+            log.warn("Unexpected error during Cloud AI inference for model [{}]: {}", targetModel, ex.getMessage());
         }
 
         return Optional.empty();

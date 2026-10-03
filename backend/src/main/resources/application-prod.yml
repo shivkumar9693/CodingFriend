@@ -43,7 +43,7 @@ app:
     cloud:
       api-key: ${GROQ_API_KEY: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}
       base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
-      model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+      model: ${GROQ_MODEL:llama-3.1-8b-instant}
       timeout-seconds: ${AI_TIMEOUT_SECONDS:30}
   security:
     jwt:

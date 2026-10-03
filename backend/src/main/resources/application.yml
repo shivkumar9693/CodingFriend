@@ -8,19 +8,27 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
   mail:
     host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp.gmail.com}}
-    port: ${SPRING_MAIL_PORT:${MAIL_PORT:587}}
+    port: ${SPRING_MAIL_PORT:${MAIL_PORT:465}}
     username: ${SPRING_MAIL_USERNAME:${MAIL_USERNAME:}}
     password: ${SPRING_MAIL_PASSWORD:${MAIL_PASSWORD:}}
     properties:
       mail:
+        transport:
+          protocol: smtp
         smtp:
           auth: true
-          starttls:
+          ssl:
             enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+            trust: "*"
+          starttls:
+            enable: false
+          socketFactory:
+            port: ${SPRING_MAIL_PORT:${MAIL_PORT:465}}
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   data:
     redis:
       repositories:

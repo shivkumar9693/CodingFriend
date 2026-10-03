@@ -256,8 +256,8 @@ class AuthControllerTest {
     void testForgotPasswordSuccess() throws Exception {
         ForgotPasswordRequest request = new ForgotPasswordRequest("learner@example.com");
         ForgotPasswordResponse response = new ForgotPasswordResponse(
-                "If an account exists with this email, password reset instructions have been sent.",
-                "mock-reset-token-123"
+                "If an account exists with this email, password reset instructions have been sent to your email inbox.",
+                null
         );
 
         when(passwordResetService.requestPasswordReset(any(ForgotPasswordRequest.class))).thenReturn(response);
@@ -268,7 +268,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.message").value(containsString("instructions have been sent")))
-                .andExpect(jsonPath("$.data.resetToken").value("mock-reset-token-123"));
+                .andExpect(jsonPath("$.data.resetToken").value(nullValue()));
     }
 
     @Test

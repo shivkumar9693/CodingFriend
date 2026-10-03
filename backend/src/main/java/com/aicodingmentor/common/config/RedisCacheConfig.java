@@ -46,9 +46,10 @@ public class RedisCacheConfig implements CachingConfigurer {
     public RedisCacheConfiguration defaultCacheConfiguration() {
         ObjectMapper cacheObjectMapper = new ObjectMapper();
         cacheObjectMapper.registerModule(new JavaTimeModule());
+        cacheObjectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         cacheObjectMapper.activateDefaultTyping(
                 LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.NON_FINAL,
+                ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
         );
 

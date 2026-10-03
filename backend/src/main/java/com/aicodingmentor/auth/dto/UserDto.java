@@ -14,6 +14,10 @@ public record UserDto(
         String avatarUrl,
         AuthProvider authProvider
 ) {
+    public UserDto(UUID id, String email, String fullName, UserRole role) {
+        this(id, email, fullName, role, null, AuthProvider.LOCAL);
+    }
+
     public static UserDto fromUser(User user) {
         return new UserDto(
                 user.getId(),

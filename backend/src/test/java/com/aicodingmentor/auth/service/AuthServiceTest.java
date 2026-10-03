@@ -2,6 +2,8 @@ package com.aicodingmentor.auth.service;
 
 import com.aicodingmentor.auth.domain.RefreshToken;
 import com.aicodingmentor.auth.dto.AuthResponse;
+import com.aicodingmentor.auth.dto.GoogleLoginRequest;
+import com.aicodingmentor.auth.dto.GoogleUserInfo;
 import com.aicodingmentor.auth.dto.LoginRequest;
 import com.aicodingmentor.auth.dto.LogoutRequest;
 import com.aicodingmentor.auth.dto.RefreshTokenRequest;

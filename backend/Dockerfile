@@ -6,7 +6,7 @@ COPY .mvn .mvn
 RUN chmod +x mvnw
 COPY src ./src
 # Build application jar skipping tests for container packaging
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw clean package -Dmaven.test.skip=true
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app

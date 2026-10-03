@@ -353,14 +353,23 @@
 
 .google-auth-wrapper {
   width: 100%;
+  min-height: 44px;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .google-btn-rendered {
   width: 100%;
+  min-height: 44px;
   display: flex;
   justify-content: center;
+  align-items: center;
+}
+
+.google-btn-rendered > div,
+.google-btn-rendered iframe {
+  margin: 0 auto !important;
 }
 
 .google-btn-disabled {

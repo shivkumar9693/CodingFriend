@@ -90,8 +90,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
 
         return ForgotPasswordResponse.of(
-                "If an account exists with this email, password reset instructions have been sent.",
-                token
+                "If an account exists with this email, password reset instructions have been sent to your email inbox.",
+                null
         );
     }
 

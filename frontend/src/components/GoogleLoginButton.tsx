@@ -121,12 +121,15 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
 
       if (buttonRef.current) {
         buttonRef.current.innerHTML = '';
+        const containerWidth = buttonRef.current.offsetWidth || 348;
+        const clampedWidth = Math.min(Math.max(containerWidth, 240), 400);
+
         window.google?.accounts.id.renderButton(buttonRef.current, {
           theme: 'filled_black',
           size: 'large',
           text,
           shape: 'rectangular',
-          width: '100%',
+          width: clampedWidth,
           logo_alignment: 'left',
         });
         renderedKeyRef.current = currentKey;

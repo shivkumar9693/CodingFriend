@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { KeyRound, Mail, ArrowRight, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react';
+import { KeyRound, Mail, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -13,7 +13,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [directResetToken, setDirectResetToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +28,6 @@ export const ForgotPasswordPage: React.FC = () => {
       const response = await authService.forgotPassword(email.trim());
       setIsSubmitted(true);
       setSuccessMessage(response.message || 'Password reset link has been sent to your email.');
-      if (response.resetToken) {
-        setDirectResetToken(response.resetToken);
-      }
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       setErrorMessage(apiErr.message || 'Failed to request password reset. Please try again.');
@@ -49,7 +45,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
           <h1 className="auth-title">Forgot Password</h1>
           <p className="auth-subtitle">
-            Enter your registered email and we'll generate a secure link to reset your password.
+            Enter your registered email and we'll send you a secure link to reset your password.
           </p>
         </div>
 
@@ -60,33 +56,34 @@ export const ForgotPasswordPage: React.FC = () => {
             <div className="reset-success-icon">
               <CheckCircle2 size={36} className="text-emerald-400" />
             </div>
-            <h3 className="reset-success-title">Check Your Email</h3>
+            <h3 className="reset-success-title">Check Your Inbox</h3>
             <p className="reset-success-desc">
               {successMessage}
             </p>
 
-            {directResetToken && (
-              <div className="reset-direct-action">
-                <div className="reset-badge">
-                  <Sparkles size={14} />
-                  <span>Dev Shortcut</span>
-                </div>
-                <p className="text-xs text-slate-400 mb-2">Direct password reset link:</p>
-                <Link
-                  to={`/reset-password?token=${directResetToken}`}
-                  className="submit-btn direct-reset-btn"
-                >
-                  <span>Proceed to Reset Password</span>
-                  <ArrowRight size={15} />
+            <div className="p-3 my-3 bg-slate-900/60 rounded-lg border border-slate-800 text-xs text-slate-400 text-left">
+              <p className="mb-1">💡 <strong>Quick tips:</strong></p>
+              <ul className="list-disc list-inside space-y-1 text-slate-400">
+                <li>Check your Spam / Junk folder if it doesn't appear within 1 minute.</li>
+                <li>The reset link will automatically expire in <strong>30 minutes</strong>.</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setIsSubmitted(false)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Didn't receive the email? Try again with another address
+              </button>
+
+              <div className="auth-footer mt-2">
+                <Link to="/login" className="auth-back-link">
+                  <ArrowLeft size={15} />
+                  <span>Back to Sign In</span>
                 </Link>
               </div>
-            )}
-
-            <div className="auth-footer mt-4">
-              <Link to="/login" className="auth-back-link">
-                <ArrowLeft size={15} />
-                <span>Back to Sign In</span>
-              </Link>
             </div>
           </div>
         ) : (

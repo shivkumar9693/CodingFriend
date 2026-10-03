@@ -72,7 +72,7 @@ class PasswordResetServiceTest {
         ForgotPasswordResponse response = passwordResetService.requestPasswordReset(request);
 
         assertNotNull(response);
-        assertNotNull(response.resetToken());
+        assertNull(response.resetToken());
         verify(passwordResetTokenRepository).deleteByUser(user);
         verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
     }

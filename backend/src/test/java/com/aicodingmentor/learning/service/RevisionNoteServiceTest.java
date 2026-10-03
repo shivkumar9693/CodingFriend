@@ -85,6 +85,34 @@ class RevisionNoteServiceTest {
     }
 
     @Test
+    @DisplayName("Should generate accurate compile error post-mortem with line numbers and syntax diagnostics")
+    void testGenerateCompileErrorPostMortem() {
+        when(mentorModelClient.isAvailable()).thenReturn(false);
+
+        GeneratePostMortemRequest request = new GeneratePostMortemRequest(
+                UUID.randomUUID(),
+                "Two Sum",
+                "JAVA",
+                "class Solution { public int[] twoSum(int[] nums, int target) { map.put(nums[i], i; } }",
+                "COMPILE_ERROR",
+                "Java 17 Compiler (Syntax Validation)",
+                "MainDriver.java:14: error: ')' expected map.put(nums[i],i; ^ 1 error",
+                "0 Compilation Errors (Clean Bytecode Build)",
+                "/tmp/sandbox-exec-7621529037976171711/MainDriver.java:14: error: ')' expected map.put(nums[i],i; ^ 1 error"
+        );
+
+        PostMortemAnalysisResponse response = revisionNoteService.generatePostMortem(userId, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.mistakeCategory()).isEqualTo("SYNTAX_ERROR");
+        assertThat(response.conceptSummary()).contains("line 14");
+        assertThat(response.conceptSummary()).contains("')' expected");
+        assertThat(response.studentFlowTrace()).contains("line 14");
+        assertThat(response.correctFlowTrace()).contains("balanced delimiters");
+        assertThat(response.keyTakeaway()).contains("delimiters");
+    }
+
+    @Test
     @DisplayName("Should create and persist revision note successfully")
     void testCreateNote() {
         CreateRevisionNoteRequest request = new CreateRevisionNoteRequest(

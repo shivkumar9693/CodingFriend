@@ -152,27 +152,96 @@ public class RevisionNoteServiceImpl implements RevisionNoteService {
         String takeaway;
         List<String> concepts = new ArrayList<>();
 
-        if ("TIME_LIMIT_EXCEEDED".equalsIgnoreCase(verdict) || (code.contains("for") && code.contains("while") && code.length() > 500)) {
+        boolean isCompileError = "COMPILE_ERROR".equalsIgnoreCase(verdict)
+                || "COMPILATION_ERROR".equalsIgnoreCase(verdict)
+                || "SYNTAX_ERROR".equalsIgnoreCase(verdict)
+                || (errorMessage != null && (errorMessage.contains("error:") || errorMessage.contains("javac") || errorMessage.contains("compile")));
+
+        if (isCompileError) {
+            category = "SYNTAX_ERROR";
+            String diag = (errorMessage != null && !errorMessage.isBlank()) ? errorMessage : actual;
+            String lineNum = "source";
+            String errorDetail = "syntax or type signature error";
+            String codeSnippet = "";
+
+            // Extract line number and compiler error description
+            java.util.regex.Pattern linePattern = java.util.regex.Pattern.compile("(?:MainDriver|Solution|[a-zA-Z0-9_]+)\\.java:(\\d+):\\s*error:\\s*([^\n\r]+)");
+            java.util.regex.Matcher matcher = linePattern.matcher(diag);
+            if (matcher.find()) {
+                lineNum = "line " + matcher.group(1);
+                errorDetail = matcher.group(2).trim();
+            } else if (diag.contains("error:")) {
+                int errIdx = diag.indexOf("error:");
+                errorDetail = diag.substring(errIdx + 6).split("\n")[0].trim();
+            }
+
+            // Extract code snippet if present
+            if (diag.contains("error:")) {
+                String[] parts = diag.split("\n");
+                for (String p : parts) {
+                    if (!p.contains(".java:") && !p.contains("error:") && !p.trim().isEmpty() && !p.contains("^")) {
+                        codeSnippet = p.trim();
+                        break;
+                    }
+                }
+            }
+
+            summary = String.format("Compiler Syntax Error (%s): %s%s",
+                    lineNum,
+                    errorDetail,
+                    codeSnippet.isBlank() ? "." : " at `" + codeSnippet + "`."
+            );
+            input = "Java 17 Compiler (Syntax Validation)";
+            actual = String.format("%s: %s%s", lineNum, errorDetail, codeSnippet.isBlank() ? "" : " [" + codeSnippet + "]");
+            expected = "0 Compilation Errors (Clean Bytecode Build)";
+
+            sFlow = String.format(
+                    "• Step 1: javac compiler initiated AST tokenization and syntax parsing.\n" +
+                    "• Step 2: Parser encountered syntax anomaly on %s: %s\n" +
+                    "• Step 3: Compilation halted: %s",
+                    lineNum,
+                    codeSnippet.isBlank() ? errorDetail : codeSnippet,
+                    errorDetail
+            );
+
+            cFlow = String.format(
+                    "• Step 1: Verify balanced delimiters (parentheses `()`, brackets `[]`, braces `{}`).\n" +
+                    "• Step 2: Ensure method arguments and expressions are closed before terminating with `;`.\n" +
+                    "• Step 3: Code parses cleanly into valid JVM bytecode with 0 compilation errors."
+            );
+
+            takeaway = "Always balance closing delimiters `)` and `]` before terminating statements with a semicolon `;`.";
+            concepts.addAll(List.of("Syntax Rules", "Compiler Diagnostics", "Delimiter Balancing"));
+        } else if ("TIME_LIMIT_EXCEEDED".equalsIgnoreCase(verdict) || (code.contains("for") && code.contains("while") && code.length() > 500)) {
             category = "TIME_LIMIT_EXCEEDED";
             summary = "Execution timed out due to polynomial time complexity $O(N^2)$ or unpruned nested loops on large scale inputs.";
             sFlow = "• Step 1: Input size $N$ received.\n• Step 2: Outer loop scans from $0$ to $N-1$.\n• Step 3: Nested inner loop performs redundant duplicate comparisons $O(N^2)$ iterations.\n• Outcome: CPU quantum exhausted (Execution Time > 2000ms).";
             cFlow = "• Step 1: Hash/Set or Two-Pointer preprocessing achieves $O(N)$ or $O(N \\log N)$ traversal.\n• Step 2: Lookups performed in $O(1)$ amortized time.\n• Outcome: Clean termination within 5ms.";
             takeaway = "When constraints exceed $10^4$, replace nested brute-force loops with a HashMap lookup or Two-Pointer invariant.";
             concepts.addAll(List.of("Time Complexity", "Space-Time Tradeoff", "HashMap Invariants"));
-        } else if ("RUNTIME_ERROR".equalsIgnoreCase(verdict) || (errorMessage != null && errorMessage.contains("IndexOutOfBounds"))) {
-            category = "OFF_BY_ONE";
-            summary = "Array index accessed out of allowable bounds (`i <= length` instead of `i < length` or negative index).";
-            sFlow = String.format("• Step 1: Evaluated input %s.\n• Step 2: Loop boundary reached index equal to array length.\n• Step 3: Attempted direct memory read at invalid offset.\n• Outcome: Runtime exception triggered (`%s`).", input, actual);
-            cFlow = String.format("• Step 1: Guard condition `i < array.length` or strict interval check applied.\n• Step 2: Safely processes elements within [0, N-1].\n• Outcome: Yields valid expected output `%s`.", expected);
-            takeaway = "0-indexed collections span indices $0$ to $N-1$. Use strict inequality `<` or `.length - 1` for terminal bounds.";
-            concepts.addAll(List.of("Boundary Conditions", "Array Bounds", "Loop Invariants"));
-        } else if ("COMPILATION_ERROR".equalsIgnoreCase(verdict)) {
-            category = "SYNTAX_ERROR";
-            summary = "Syntax or type signature mismatch in solution structure.";
-            sFlow = "• Step 1: Source code parsed by compiler.\n• Step 2: Encountered missing return statement, unclosed bracket, or mismatched parameter types.\n• Outcome: Compilation failed.";
-            cFlow = "• Step 1: Verify method signature matches required return type.\n• Step 2: Ensure all conditional paths explicitly return a value.\n• Outcome: Code compiles cleanly.";
-            takeaway = "Check method return signatures and ensure every code branch returns the specified type.";
-            concepts.addAll(List.of("Type Safety", "Method Contracts", "Syntax Invariants"));
+        } else if ("RUNTIME_ERROR".equalsIgnoreCase(verdict) || (errorMessage != null && (errorMessage.contains("Exception") || errorMessage.contains("Error")))) {
+            if (errorMessage != null && errorMessage.contains("NullPointer")) {
+                category = "RUNTIME_EXCEPTION";
+                summary = "NullPointerException triggered by dereferencing an uninitialized reference or missing map key.";
+                sFlow = String.format("• Step 1: Evaluated input: %s\n• Step 2: Attempted method call on null object reference.\n• Step 3: JVM threw NullPointerException.", input);
+                cFlow = "• Step 1: Check for null before invoking methods or use Optional/containsKey guards.\n• Step 2: Safe execution path taken.\n• Outcome: Clean execution yielding expected output.";
+                takeaway = "Always guard object references with null checks or use `containsKey` before accessing map keys.";
+                concepts.addAll(List.of("Null Safety", "Defensive Programming", "Object Initialization"));
+            } else if (errorMessage != null && errorMessage.contains("IndexOutOfBounds")) {
+                category = "OFF_BY_ONE";
+                summary = "Array index accessed out of allowable bounds (`i <= length` instead of `i < length` or negative index).";
+                sFlow = String.format("• Step 1: Evaluated input %s.\n• Step 2: Loop boundary reached index equal to array length.\n• Step 3: Attempted direct memory read at invalid offset.\n• Outcome: Runtime exception triggered (`%s`).", input, actual);
+                cFlow = String.format("• Step 1: Guard condition `i < array.length` or strict interval check applied.\n• Step 2: Safely processes elements within [0, N-1].\n• Outcome: Yields valid expected output `%s`.", expected);
+                takeaway = "0-indexed collections span indices $0$ to $N-1$. Use strict inequality `<` or `.length - 1` for terminal bounds.";
+                concepts.addAll(List.of("Boundary Conditions", "Array Bounds", "Loop Invariants"));
+            } else {
+                category = "RUNTIME_EXCEPTION";
+                summary = String.format("Runtime exception occurred during execution: %s", errorMessage != null ? errorMessage.split("\n")[0] : "Unexpected error");
+                sFlow = String.format("• Step 1: Processing input: %s\n• Step 2: Execution path encountered an unhandled exception.\n• Step 3: Fault: %s", input, errorMessage != null ? errorMessage : actual);
+                cFlow = String.format("• Step 1: Apply input validation and guard edge constraints.\n• Step 2: Execute algorithm within safe boundaries.\n• Step 3: Successfully produces: %s", expected);
+                takeaway = "Test boundary conditions such as 0, empty inputs, single-element collections, and negative numbers.";
+                concepts.addAll(List.of("Runtime Invariants", "Exception Handling", "Edge Case Safety"));
+            }
         } else {
             // General Logic / Counter-Example Discrepancy
             category = "LOGIC_ERROR";

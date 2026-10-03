@@ -133,6 +133,32 @@ export const SubmissionResultView: React.FC<SubmissionResultViewProps> = ({
       }
     }
 
+    const isCompileError =
+      submission.verdict === 'COMPILE_ERROR' ||
+      !!(submission.errorMessage && (submission.errorMessage.includes('error:') || submission.errorMessage.includes('javac')));
+    const isRuntimeError = submission.verdict === 'RUNTIME_ERROR';
+    const isTle = submission.verdict === 'TIME_LIMIT_EXCEEDED';
+
+    const defaultFailedInput = isCompileError
+      ? 'Java 17 Compiler (Syntax Validation)'
+      : isTle
+      ? 'Max Constraint Scaling Input'
+      : 'Sample Test Case';
+
+    const defaultActualOutput = isCompileError
+      ? (submission.errorMessage || 'Compiler Syntax Anomaly')
+      : isRuntimeError
+      ? (submission.errorMessage || 'Runtime Exception')
+      : isTle
+      ? 'Time Limit Exceeded (> 5000ms)'
+      : 'Incorrect Return Value';
+
+    const defaultExpectedOutput = isCompileError
+      ? '0 Compilation Errors (Clean Bytecode Build)'
+      : isTle
+      ? 'Clean Execution within Time Limit'
+      : 'Expected Invariant Output';
+
     try {
       const res = await revisionNotesService.generatePostMortem({
         problemId: submission.problemId,
@@ -140,9 +166,9 @@ export const SubmissionResultView: React.FC<SubmissionResultViewProps> = ({
         language: submission.language || 'JAVA',
         submittedCode: submission.sourceCode,
         verdict: submission.verdict || submission.status,
-        failedInput: failedInput || 'Sample Test Case',
-        actualOutput: actualOutput || 'Incorrect Return / Crash',
-        expectedOutput: expectedOutput || 'Expected Invariant Output',
+        failedInput: failedInput || defaultFailedInput,
+        actualOutput: actualOutput || defaultActualOutput,
+        expectedOutput: expectedOutput || defaultExpectedOutput,
         errorMessage: submission.errorMessage || undefined,
       });
 

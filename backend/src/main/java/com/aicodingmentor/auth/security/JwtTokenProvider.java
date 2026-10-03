@@ -25,7 +25,7 @@ public class JwtTokenProvider {
 
     public JwtTokenProvider(
             @Value("${app.security.jwt.secret:developmentSecretKeyChangeMeForProductionUseOnlyAtLeast256BitsLong12345}") String jwtSecret,
-            @Value("${app.security.jwt.access-token-expiration-ms:${app.security.jwt.expiration-ms:900000}}") long accessTokenExpirationMs
+            @Value("${app.security.jwt.access-token-expiration-ms:${app.security.jwt.expiration-ms:604800000}}") long accessTokenExpirationMs
     ) {
         this.jwtSecret = jwtSecret;
         this.accessTokenExpirationMs = accessTokenExpirationMs;

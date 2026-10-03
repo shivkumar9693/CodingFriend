@@ -145,4 +145,21 @@ class OpenAiCompatibleMentorModelClientTest {
 
         assertThat(client.isAvailable()).isTrue();
     }
+
+    @Test
+    @DisplayName("Should auto-configure Google Gemini endpoint and model when key starts with AIza")
+    void testGeminiAutoDetection() {
+        OpenAiCompatibleMentorModelClient geminiClient = new OpenAiCompatibleMentorModelClient(
+                "AIzaSyExampleGeminiKey123456789",
+                "",
+                "",
+                10,
+                httpClient,
+                objectMapper
+        );
+
+        assertThat(geminiClient.isConfigured()).isTrue();
+        assertThat(geminiClient.getBaseUrl()).isEqualTo("https://generativelanguage.googleapis.com/v1beta/openai");
+        assertThat(geminiClient.getModelName()).isEqualTo("gemini-1.5-flash");
+    }
 }

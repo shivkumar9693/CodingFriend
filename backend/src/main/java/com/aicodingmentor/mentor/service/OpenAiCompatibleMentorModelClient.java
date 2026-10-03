@@ -39,6 +39,8 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
 
     private static final List<String> CANDIDATE_FALLBACK_MODELS = List.of(
             "llama-3.1-8b-instant",
+            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             "llama3-70b-8192",
             "llama3-8b-8192",
             "gemma2-9b-it",
@@ -48,9 +50,9 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
 
     @Autowired
     public OpenAiCompatibleMentorModelClient(
-            @Value("${app.mentor.cloud.api-key:${GROQ_API_KEY:${AI_API_KEY:}}}") String apiKey,
-            @Value("${app.mentor.cloud.base-url:${GROQ_BASE_URL:${AI_BASE_URL:https://api.groq.com/openai/v1}}}") String baseUrl,
-            @Value("${app.mentor.cloud.model:${GROQ_MODEL:${AI_MODEL:llama-3.1-8b-instant}}}") String model,
+            @Value("${app.mentor.cloud.api-key:${GEMINI_API_KEY:${GROQ_API_KEY:${AI_API_KEY:}}}}") String apiKey,
+            @Value("${app.mentor.cloud.base-url:${AI_BASE_URL:${GROQ_BASE_URL:${GEMINI_BASE_URL:}}}}") String baseUrl,
+            @Value("${app.mentor.cloud.model:${AI_MODEL:${GROQ_MODEL:${GEMINI_MODEL:}}}}") String model,
             @Value("${app.mentor.cloud.timeout-seconds:${AI_TIMEOUT_SECONDS:30}}") int timeoutSeconds,
             ObjectMapper objectMapper
     ) {
@@ -77,9 +79,30 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
             HttpClient httpClient,
             ObjectMapper objectMapper
     ) {
-        this.apiKey = apiKey != null ? apiKey.trim() : "";
-        this.baseUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.replaceAll("/+$", "") : "https://api.groq.com/openai/v1";
-        this.model = (model != null && !model.isBlank()) ? model : "llama-3.1-8b-instant";
+        String cleanKey = apiKey != null ? apiKey.trim() : "";
+        String cleanBaseUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.replaceAll("/+$", "") : "";
+        String cleanModel = (model != null && !model.isBlank()) ? model.trim() : "";
+
+        // Auto-detect Google Gemini API key (Google AI Studio keys start with 'AIza')
+        if (cleanKey.startsWith("AIza")) {
+            if (cleanBaseUrl.isBlank() || cleanBaseUrl.contains("groq.com")) {
+                cleanBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
+            }
+            if (cleanModel.isBlank() || cleanModel.startsWith("llama")) {
+                cleanModel = "gemini-1.5-flash";
+            }
+        } else {
+            if (cleanBaseUrl.isBlank()) {
+                cleanBaseUrl = "https://api.groq.com/openai/v1";
+            }
+            if (cleanModel.isBlank()) {
+                cleanModel = "llama-3.1-8b-instant";
+            }
+        }
+
+        this.apiKey = cleanKey;
+        this.baseUrl = cleanBaseUrl;
+        this.model = cleanModel;
         this.timeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;

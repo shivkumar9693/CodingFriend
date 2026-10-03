@@ -28,7 +28,7 @@ class EmailServiceTest {
     @BeforeEach
     void setUp() {
         templateBuilder = new EmailTemplateBuilder();
-        emailService = new EmailServiceImpl(mailSender, templateBuilder);
+        emailService = new EmailServiceImpl(mailSender, templateBuilder, new com.fasterxml.jackson.databind.ObjectMapper());
         ReflectionTestUtils.setField(emailService, "mailUsername", "testapp@gmail.com");
         ReflectionTestUtils.setField(emailService, "fromAddress", "CodingFriend <testapp@gmail.com>");
         ReflectionTestUtils.setField(emailService, "mailEnabled", true);

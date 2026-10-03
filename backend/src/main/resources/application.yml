@@ -36,9 +36,12 @@ spring:
 
 app:
   mail:
-    from: ${APP_MAIL_FROM:CodingFriend <noreply@codingfriend.com>}
+    from: ${APP_MAIL_FROM:CodingFriend <shivkumarthakur9693@gmail.com>}
     enabled: ${MAIL_ENABLED:true}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+
+brevo:
+  api-key: ${BREVO_API_KEY:}
 
 management:
   endpoints:

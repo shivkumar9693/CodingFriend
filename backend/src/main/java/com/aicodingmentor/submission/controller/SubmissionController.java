@@ -82,7 +82,8 @@ public class SubmissionController {
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateSubmissionRequest request
     ) {
-        SubmissionResponse response = submissionService.runCode(principal.getId(), request);
+        UUID userId = principal != null ? principal.getId() : UUID.fromString("00000000-0000-0000-0000-000000000000");
+        SubmissionResponse response = submissionService.runCode(userId, request);
         return ResponseEntity.ok(response);
     }
 

@@ -63,7 +63,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/actuator/health",
                                 "/actuator/info",
-                                "/api/test/public"
+                                "/api/test/public",
+                                "/api/submissions/run",
+                                "/api/v1/submissions/run"
                         ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,

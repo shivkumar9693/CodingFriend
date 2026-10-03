@@ -378,15 +378,6 @@ export const ProblemDetailPage: React.FC = () => {
   // Handle running code against test suite
   const handleRunCode = async () => {
     if (!problem) return;
-    if (!isAuthenticated) {
-      showToast({
-        type: 'error',
-        title: 'Authentication Required',
-        message: 'You must be logged in to execute your solution against test cases.',
-        duration: 5000,
-      });
-      return;
-    }
 
     setIsRunning(true);
     try {
@@ -415,10 +406,13 @@ export const ProblemDetailPage: React.FC = () => {
         });
       }
     } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Execution failed. Please check your syntax or try again.';
       showToast({
         type: 'error',
         title: 'Execution Failed',
-        message: err instanceof Error ? err.message : 'Execution failed. Please check your syntax or try again.',
+        message: msg,
         duration: 6000,
       });
     } finally {

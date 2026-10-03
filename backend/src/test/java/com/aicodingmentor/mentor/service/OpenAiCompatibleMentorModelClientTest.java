@@ -37,8 +37,10 @@ class OpenAiCompatibleMentorModelClientTest {
         objectMapper = new ObjectMapper();
         client = new OpenAiCompatibleMentorModelClient(
                 "gsk_testApiKey123456789",
-                "https://api.groq.com/openai/v1",
-                "llama-3.3-70b-versatile",
+                "AQ.testGeminiKey123456789",
+                "",
+                "",
+                "",
                 10,
                 httpClient,
                 objectMapper
@@ -52,8 +54,10 @@ class OpenAiCompatibleMentorModelClientTest {
 
         OpenAiCompatibleMentorModelClient unconfigured = new OpenAiCompatibleMentorModelClient(
                 "",
-                "https://api.groq.com/openai/v1",
-                "llama-3.3-70b-versatile",
+                "",
+                "",
+                "",
+                "",
                 10,
                 httpClient,
                 objectMapper
@@ -89,7 +93,7 @@ class OpenAiCompatibleMentorModelClientTest {
 
         assertThat(result).isPresent();
         assertThat(result.get()).contains("Check your loop boundary.");
-        assertThat(client.getModelName()).isEqualTo("llama-3.3-70b-versatile");
+        assertThat(client.getModelName()).isEqualTo("llama-3.1-8b-instant");
     }
 
     @Test
@@ -147,10 +151,12 @@ class OpenAiCompatibleMentorModelClientTest {
     }
 
     @Test
-    @DisplayName("Should auto-configure Google Gemini endpoint and model when key starts with AIza")
+    @DisplayName("Should configure Google Gemini endpoint and model when key is provided")
     void testGeminiAutoDetection() {
         OpenAiCompatibleMentorModelClient geminiClient = new OpenAiCompatibleMentorModelClient(
-                "AIzaSyExampleGeminiKey123456789",
+                "",
+                "AQ.Ab8RN6KCXZ2inXZOFrMz3nxU5tZDASISm0ZWsH8s0UU2UPboww",
+                "",
                 "",
                 "",
                 10,

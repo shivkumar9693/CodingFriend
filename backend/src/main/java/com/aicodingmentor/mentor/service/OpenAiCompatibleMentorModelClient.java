@@ -30,36 +30,29 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiCompatibleMentorModelClient.class);
 
-    private final String apiKey;
-    private final String baseUrl;
-    private final String model;
+    private record CloudProvider(String name, String baseUrl, String apiKey, List<String> models) {}
+
+    private final List<CloudProvider> providers = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final Duration timeout;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    private static final List<String> CANDIDATE_FALLBACK_MODELS = List.of(
-            "llama-3.1-8b-instant",
-            "gemini-1.5-flash",
-            "gemini-2.0-flash",
-            "llama3-70b-8192",
-            "llama3-8b-8192",
-            "gemma2-9b-it",
-            "mixtral-8x7b-32768",
-            "qwen/qwen3.8-27b"
-    );
-
     @Autowired
     public OpenAiCompatibleMentorModelClient(
-            @Value("${app.mentor.cloud.api-key:${GEMINI_API_KEY:${GROQ_API_KEY:${AI_API_KEY:}}}}") String apiKey,
-            @Value("${app.mentor.cloud.base-url:${AI_BASE_URL:${GROQ_BASE_URL:${GEMINI_BASE_URL:}}}}") String baseUrl,
-            @Value("${app.mentor.cloud.model:${AI_MODEL:${GROQ_MODEL:${GEMINI_MODEL:}}}}") String model,
-            @Value("${app.mentor.cloud.timeout-seconds:${AI_TIMEOUT_SECONDS:30}}") int timeoutSeconds,
+            @Value("${app.mentor.cloud.groq-api-key:${GROQ_API_KEY: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}}") String groqApiKey,
+            @Value("${app.mentor.cloud.gemini-api-key:${GEMINI_API_KEY:AQ.Ab8RN6KCXZ2inXZOFrMz3nxU5tZDASISm0ZWsH8s0UU2UPboww}}") String geminiApiKey,
+            @Value("${app.mentor.cloud.api-key:${AI_API_KEY:}}") String customApiKey,
+            @Value("${app.mentor.cloud.base-url:${AI_BASE_URL:}}") String customBaseUrl,
+            @Value("${app.mentor.cloud.model:${AI_MODEL:}}") String customModel,
+            @Value("${app.mentor.cloud.timeout-seconds:${AI_TIMEOUT_SECONDS:25}}") int timeoutSeconds,
             ObjectMapper objectMapper
     ) {
         this(
-                apiKey,
-                baseUrl,
-                model,
+                groqApiKey,
+                geminiApiKey,
+                customApiKey,
+                customBaseUrl,
+                customModel,
                 timeoutSeconds,
                 HttpClient.newBuilder()
                         .connectTimeout(Duration.ofSeconds(5))
@@ -72,51 +65,65 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
      * Package-private constructor for unit testing with mocked HTTP clients.
      */
     OpenAiCompatibleMentorModelClient(
-            String apiKey,
-            String baseUrl,
-            String model,
+            String groqApiKey,
+            String geminiApiKey,
+            String customApiKey,
+            String customBaseUrl,
+            String customModel,
             int timeoutSeconds,
             HttpClient httpClient,
             ObjectMapper objectMapper
     ) {
-        String cleanKey = apiKey != null ? apiKey.trim() : "";
-        String cleanBaseUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.replaceAll("/+$", "") : "";
-        String cleanModel = (model != null && !model.isBlank()) ? model.trim() : "";
-
-        // Auto-detect Google Gemini API key (Google AI Studio keys start with 'AIza')
-        if (cleanKey.startsWith("AIza")) {
-            if (cleanBaseUrl.isBlank() || cleanBaseUrl.contains("groq.com")) {
-                cleanBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
-            }
-            if (cleanModel.isBlank() || cleanModel.startsWith("llama")) {
-                cleanModel = "gemini-1.5-flash";
-            }
-        } else {
-            if (cleanBaseUrl.isBlank()) {
-                cleanBaseUrl = "https://api.groq.com/openai/v1";
-            }
-            if (cleanModel.isBlank()) {
-                cleanModel = "llama-3.1-8b-instant";
-            }
-        }
-
-        this.apiKey = cleanKey;
-        this.baseUrl = cleanBaseUrl;
-        this.model = cleanModel;
         this.timeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
 
+        // 1. Custom or override provider if explicitly supplied
+        if (customApiKey != null && !customApiKey.isBlank()) {
+            String bUrl = (customBaseUrl != null && !customBaseUrl.isBlank())
+                    ? customBaseUrl.replaceAll("/+$", "")
+                    : (customApiKey.startsWith("AIza") || customApiKey.startsWith("AQ.")
+                        ? "https://generativelanguage.googleapis.com/v1beta/openai"
+                        : "https://api.groq.com/openai/v1");
+            String defaultMod = (customModel != null && !customModel.isBlank())
+                    ? customModel
+                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash" : "llama-3.1-8b-instant");
+            List<String> models = bUrl.contains("googleapis")
+                    ? List.of(defaultMod, "gemini-1.5-flash", "gemini-2.0-flash")
+                    : List.of(defaultMod, "llama-3.1-8b-instant", "llama3-70b-8192");
+            providers.add(new CloudProvider("Custom-AI", bUrl, customApiKey.trim(), models));
+        }
+
+        // 2. Groq Cloud Provider (Fast Llama-3.1 & Qwen)
+        if (groqApiKey != null && !groqApiKey.isBlank()) {
+            providers.add(new CloudProvider(
+                    "Groq-Cloud",
+                    "https://api.groq.com/openai/v1",
+                    groqApiKey.trim(),
+                    List.of("llama-3.1-8b-instant", "llama3-70b-8192", "gemma2-9b-it", "mixtral-8x7b-32768")
+            ));
+        }
+
+        // 3. Google Gemini OpenAI-compatible Provider (Gemini-1.5 & Gemini-2.0)
+        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+            providers.add(new CloudProvider(
+                    "Google-Gemini",
+                    "https://generativelanguage.googleapis.com/v1beta/openai",
+                    geminiApiKey.trim(),
+                    List.of("gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
+            ));
+        }
+
         if (isConfigured()) {
-            log.info("Initialized OpenAiCompatibleMentorModelClient for provider [{}], model [{}], key [{}]",
-                    this.baseUrl, this.model, maskApiKey(this.apiKey));
+            log.info("Initialized OpenAiCompatibleMentorModelClient with {} active cloud providers: {}",
+                    providers.size(), providers.stream().map(p -> p.name() + " (" + maskApiKey(p.apiKey()) + ")").toList());
         } else {
-            log.debug("OpenAiCompatibleMentorModelClient is not configured (no API key provided).");
+            log.debug("OpenAiCompatibleMentorModelClient is not configured (no cloud API keys found).");
         }
     }
 
     public boolean isConfigured() {
-        return apiKey != null && !apiKey.isBlank();
+        return !providers.isEmpty();
     }
 
     @Override
@@ -125,34 +132,24 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
             return Optional.empty();
         }
 
-        // Try primary configured model first
-        Optional<String> result = executeInference(this.model, systemPrompt, userPrompt);
-        if (result.isPresent()) {
-            return result;
-        }
-
-        // If primary failed (e.g. 404 model_not_found), attempt candidate fallback models
-        for (String fallbackModel : CANDIDATE_FALLBACK_MODELS) {
-            if (fallbackModel.equalsIgnoreCase(this.model)) {
-                continue;
+        // Try configured cloud providers in resilient fallback order
+        for (CloudProvider provider : providers) {
+            for (String modelName : provider.models()) {
+                log.debug("Attempting inference with provider [{}] model [{}]...", provider.name(), modelName);
+                Optional<String> res = executeInference(provider, modelName, systemPrompt, userPrompt);
+                if (res.isPresent()) {
+                    return res;
+                }
             }
-            log.info("Attempting Cloud AI inference with candidate fallback model [{}]...", fallbackModel);
-            Optional<String> fallbackResult = executeInference(fallbackModel, systemPrompt, userPrompt);
-            if (fallbackResult.isPresent()) {
-                log.info("Fallback model [{}] succeeded.", fallbackModel);
-                return fallbackResult;
-            }
+            log.warn("Provider [{}] exhausted all candidate models. Cascading to next cloud provider...", provider.name());
         }
 
         return Optional.empty();
     }
 
-    private Optional<String> executeInference(String targetModel, String systemPrompt, String userPrompt) {
+    private Optional<String> executeInference(CloudProvider provider, String targetModel, String systemPrompt, String userPrompt) {
         long startTime = System.currentTimeMillis();
         int promptSize = (systemPrompt != null ? systemPrompt.length() : 0) + (userPrompt != null ? userPrompt.length() : 0);
-
-        log.debug("Dispatching LLM inference request to Cloud AI API [{}]. Model: [{}], Total Prompt Chars: [{}]",
-                baseUrl, targetModel, promptSize);
 
         try {
             Map<String, Object> payloadMap = Map.of(
@@ -168,9 +165,9 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
             String requestPayload = objectMapper.writeValueAsString(payloadMap);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/chat/completions"))
+                    .uri(URI.create(provider.baseUrl() + "/chat/completions"))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + provider.apiKey())
                     .timeout(timeout)
                     .POST(HttpRequest.BodyPublishers.ofString(requestPayload))
                     .build();
@@ -184,30 +181,32 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
                     JsonNode messageNode = root.get("choices").get(0).get("message");
                     if (messageNode != null && messageNode.has("content")) {
                         String rawContent = messageNode.get("content").asText();
-                        log.info("Cloud AI inference completed successfully in [{}ms] for model [{}]", latencyMs, targetModel);
+                        log.info("Cloud AI inference succeeded via [{}] (model: [{}]) in [{}ms]",
+                                provider.name(), targetModel, latencyMs);
                         return Optional.ofNullable(rawContent);
                     }
                 }
-                log.warn("Cloud AI returned 200 OK but payload format unexpected in [{}ms]", latencyMs);
+                log.warn("Provider [{}] returned 200 OK but payload format was unexpected in [{}ms]", provider.name(), latencyMs);
             } else if (response.statusCode() == 429) {
-                log.warn("Cloud AI rate limit reached (HTTP 429) in [{}ms] for model [{}].", latencyMs, targetModel);
+                log.warn("Provider [{}] model [{}] rate limited (HTTP 429) in [{}ms]. Cascading...",
+                        provider.name(), targetModel, latencyMs);
             } else {
-                log.warn("Cloud AI server returned non-200 status [{}] in [{}ms] for model [{}]. Error: {}",
-                        response.statusCode(), latencyMs, targetModel, sanitizeErrorMessage(response.body()));
+                log.warn("Provider [{}] model [{}] returned status [{}] in [{}ms]. Error: {}",
+                        provider.name(), targetModel, response.statusCode(), latencyMs, sanitizeErrorMessage(response.body()));
             }
         } catch (HttpTimeoutException ex) {
             long latencyMs = System.currentTimeMillis() - startTime;
-            log.warn("Cloud AI inference timed out after [{}ms] for model [{}] (limit: {}s).",
-                    latencyMs, targetModel, timeout.toSeconds());
+            log.warn("Provider [{}] model [{}] timed out after [{}ms]. Cascading...",
+                    provider.name(), targetModel, latencyMs);
         } catch (ConnectException ex) {
-            log.warn("Cloud AI host unreachable at [{}] ({}).", baseUrl, ex.getMessage());
+            log.warn("Provider [{}] host unreachable at [{}] ({}). Cascading...", provider.name(), provider.baseUrl(), ex.getMessage());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             log.warn("Cloud AI request interrupted: {}", ex.getMessage());
         } catch (IOException ex) {
-            log.warn("I/O error communicating with Cloud AI API [{}] for model [{}]: {}", baseUrl, targetModel, ex.getMessage());
+            log.warn("I/O error communicating with provider [{}] model [{}]: {}", provider.name(), targetModel, ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Unexpected error during Cloud AI inference for model [{}]: {}", targetModel, ex.getMessage());
+            log.warn("Unexpected error during Cloud AI inference with [{}] model [{}]: {}", provider.name(), targetModel, ex.getMessage());
         }
 
         return Optional.empty();
@@ -215,7 +214,10 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
 
     @Override
     public String getModelName() {
-        return model;
+        if (providers.isEmpty()) {
+            return "unconfigured";
+        }
+        return providers.get(0).models().get(0);
     }
 
     @Override
@@ -223,24 +225,28 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
         if (!isConfigured()) {
             return false;
         }
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/models"))
-                    .header("Authorization", "Bearer " + apiKey)
-                    .timeout(Duration.ofSeconds(3))
-                    .GET()
-                    .build();
+        for (CloudProvider provider : providers) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(provider.baseUrl() + "/models"))
+                        .header("Authorization", "Bearer " + provider.apiKey())
+                        .timeout(Duration.ofSeconds(3))
+                        .GET()
+                        .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.statusCode() == 200;
-        } catch (Exception ex) {
-            log.debug("Cloud AI availability check failed against [{}] : {}", baseUrl, ex.getMessage());
-            return false;
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    return true;
+                }
+            } catch (Exception ex) {
+                log.debug("Cloud AI availability check failed for provider [{}] : {}", provider.name(), ex.getMessage());
+            }
         }
+        return false;
     }
 
     public String getBaseUrl() {
-        return baseUrl;
+        return providers.isEmpty() ? "" : providers.get(0).baseUrl();
     }
 
     public Duration getTimeout() {

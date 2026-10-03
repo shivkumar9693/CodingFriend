@@ -8,8 +8,10 @@ COPY src ./src
 # Build application jar skipping tests for container packaging
 RUN ./mvnw clean package -Dmaven.test.skip=true
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
+# Install multi-language execution runtimes (python3, nodejs, g++) and build tools
+RUN apk add --no-cache python3 nodejs g++
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 COPY --from=builder /app/target/*.jar app.jar

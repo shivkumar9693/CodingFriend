@@ -43,8 +43,13 @@ public class DriverHarnessInjector {
             return userCode;
         }
 
+        String sanitizedUserCode = userCode;
+        if (lang == SupportedLanguage.JAVA) {
+            sanitizedUserCode = userCode.replaceAll("public\\s+class\\s+", "class ");
+        }
+
         log.debug("Injecting user code into driver harness for problem [{}] and language [{}]", problemSlug, lang);
-        return template.driverHarness().replace("{{USER_CODE}}", userCode);
+        return template.driverHarness().replace("{{USER_CODE}}", sanitizedUserCode);
     }
 
     private boolean isAlreadyStandalone(String code, SupportedLanguage language) {

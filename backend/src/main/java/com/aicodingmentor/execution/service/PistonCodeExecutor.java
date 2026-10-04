@@ -96,18 +96,18 @@ public class PistonCodeExecutor implements CodeExecutor {
             return fallbackExecutor.execute(request);
         }
 
-        // 1. Try Wandbox (100% Free, Public, Open API - No Whitelist)
-        try {
-            return executeViaWandbox(request);
-        } catch (Exception ex) {
-            log.warn("Wandbox execution failed: [{}]. Cascading to Piston...", ex.getMessage());
-        }
-
-        // 2. Try Piston API
+        // 1. Try Piston API first (Low Latency ~300-600ms)
         try {
             return executeViaPiston(request);
         } catch (Exception ex) {
-            log.warn("Piston execution failed: [{}]. Cascading to local fallback executor...", ex.getMessage());
+            log.warn("Piston execution failed: [{}]. Cascading to Wandbox...", ex.getMessage());
+        }
+
+        // 2. Try Wandbox API (Resilient Backup)
+        try {
+            return executeViaWandbox(request);
+        } catch (Exception ex) {
+            log.warn("Wandbox execution failed: [{}]. Cascading to local fallback executor...", ex.getMessage());
         }
 
         // 3. Fallback to local container sandbox
@@ -141,12 +141,12 @@ public class PistonCodeExecutor implements CodeExecutor {
 
             if (!encounteredCloudFailure) {
                 try {
-                    // Try Wandbox first, then Piston
+                    // Try Piston first, then Wandbox
                     ExecutionResult result;
                     try {
-                        result = executeViaWandbox(singleRequest);
-                    } catch (Exception wandboxEx) {
                         result = executeViaPiston(singleRequest);
+                    } catch (Exception pistonEx) {
+                        result = executeViaWandbox(singleRequest);
                     }
 
                     batchResults.add(result);
@@ -172,9 +172,14 @@ public class PistonCodeExecutor implements CodeExecutor {
         long startTime = System.currentTimeMillis();
         String compiler = mapWandboxCompiler(request.language());
 
+        String code = request.sourceCode() != null ? request.sourceCode() : "";
+        if (request.language() == SupportedLanguage.JAVA || request.language() == null) {
+            code = code.replaceAll("public\\s+class\\s+", "class ");
+        }
+
         Map<String, Object> payloadMap = new java.util.HashMap<>();
         payloadMap.put("compiler", compiler);
-        payloadMap.put("code", request.sourceCode() != null ? request.sourceCode() : "");
+        payloadMap.put("code", code);
         payloadMap.put("stdin", request.stdin() != null ? request.stdin() : "");
 
         String jsonPayload = objectMapper.writeValueAsString(payloadMap);
@@ -333,6 +338,9 @@ public class PistonCodeExecutor implements CodeExecutor {
                 return className.trim() + ".java";
             }
             if (sourceCode != null) {
+                if (sourceCode.contains("class MainDriver") || sourceCode.contains("MainDriver")) {
+                    return "MainDriver.java";
+                }
                 Matcher matcher = JAVA_CLASS_NAME_PATTERN.matcher(sourceCode);
                 if (matcher.find()) {
                     return matcher.group(1) + ".java";

@@ -127,7 +127,7 @@ public class DriverHarnessRegistry {
 
                     {{USER_CODE}}
 
-                    public class MainDriver {
+                    class MainDriver {
                         public static void main(String[] args) {
                             try {
                                 Scanner sc = new Scanner(System.in);
@@ -286,7 +286,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -428,7 +428,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -548,7 +548,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -678,7 +678,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -813,7 +813,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextInt()) return;
@@ -939,7 +939,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -974,7 +974,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;
@@ -1012,7 +1012,7 @@ public class DriverHarnessRegistry {
 
                 {{USER_CODE}}
 
-                public class MainDriver {
+                class MainDriver {
                     public static void main(String[] args) {
                         Scanner sc = new Scanner(System.in);
                         if (!sc.hasNextLine()) return;

@@ -53,6 +53,11 @@ app:
   mail:
     from: ${APP_MAIL_FROM:CodingFriend <shivkumarthakur9693@gmail.com>}
     enabled: ${MAIL_ENABLED:true}
+  execution:
+    piston:
+      enabled: ${PISTON_ENABLED:true}
+      url: ${PISTON_URL:https://emkc.org/api/v2/piston/execute}
+      timeout-seconds: ${PISTON_TIMEOUT_SECONDS:12}
 
 brevo:
   api-key: ${BREVO_API_KEY:}

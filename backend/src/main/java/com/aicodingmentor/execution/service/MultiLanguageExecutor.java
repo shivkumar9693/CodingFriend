@@ -27,8 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Service
-@Primary
+@Service("multiLanguageExecutor")
 public class MultiLanguageExecutor implements CodeExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(MultiLanguageExecutor.class);

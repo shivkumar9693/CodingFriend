@@ -78,17 +78,33 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
 
-        // 1. Groq Cloud Provider (Current Active Production Models: Qwen first, then GPT-OSS & Llama)
+        // 1. Groq Cloud Provider — Priority order: Qwen (reasoning) → Llama 3.3 → Llama 3.1
+        //    NOTE: Groq uses flat model IDs, NOT OpenRouter-style "vendor/model" paths.
         if (groqApiKey != null && !groqApiKey.isBlank()) {
             providers.add(new CloudProvider(
                     "Groq-Cloud",
                     "https://api.groq.com/openai/v1",
                     groqApiKey.trim(),
-                    List.of("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+                    List.of(
+                            "qwen-qwq-32b",            // Qwen reasoning model - highest quality on Groq
+                            "qwen2.5-32b",             // Qwen 2.5 32B instruction
+                            "llama-3.3-70b-versatile", // Llama 3.3 70B — capable general model
+                            "llama-3.1-8b-instant"     // Ultra-fast fallback
+                    )
             ));
         }
 
-        // 2. Custom or override provider if explicitly supplied
+        // 2. Google Gemini Provider (second priority — free flash tier)
+        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+            providers.add(new CloudProvider(
+                    "Google-Gemini",
+                    "https://generativelanguage.googleapis.com/v1beta/openai",
+                    geminiApiKey.trim(),
+                    List.of("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro")
+            ));
+        }
+
+        // 3. Custom or override provider if explicitly supplied (lowest priority unless configured)
         if (customApiKey != null && !customApiKey.isBlank() && !customApiKey.equals(groqApiKey)) {
             String bUrl = (customBaseUrl != null && !customBaseUrl.isBlank())
                     ? customBaseUrl.replaceAll("/+$", "")
@@ -97,21 +113,11 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
                         : "https://api.groq.com/openai/v1");
             String defaultMod = (customModel != null && !customModel.isBlank())
                     ? customModel
-                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash" : "qwen/qwen3.8-27b");
+                    : (bUrl.contains("googleapis") ? "gemini-2.0-flash" : "qwen-qwq-32b");
             List<String> models = bUrl.contains("googleapis")
-                    ? List.of(defaultMod, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
-                    : List.of(defaultMod, "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b");
+                    ? List.of(defaultMod, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro")
+                    : List.of(defaultMod, "qwen-qwq-32b", "qwen2.5-32b", "llama-3.3-70b-versatile");
             providers.add(new CloudProvider("Custom-AI", bUrl, customApiKey.trim(), models));
-        }
-
-        // 3. Google Gemini Provider
-        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
-            providers.add(new CloudProvider(
-                    "Google-Gemini",
-                    "https://generativelanguage.googleapis.com/v1beta/openai",
-                    geminiApiKey.trim(),
-                    List.of("gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
-            ));
         }
 
         if (isConfigured()) {

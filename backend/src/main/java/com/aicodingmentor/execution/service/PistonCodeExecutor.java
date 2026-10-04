@@ -39,6 +39,12 @@ public class PistonCodeExecutor implements CodeExecutor {
     private static final Logger log = LoggerFactory.getLogger(PistonCodeExecutor.class);
 
     private static final Pattern JAVA_CLASS_NAME_PATTERN = Pattern.compile("(?:public\\s+)?class\\s+([A-Za-z0-9_]+)");
+    /**
+     * Estimated Wandbox server-side startup/compile overhead in ms.
+     * Subtracted from the raw API latency to give a fairer code execution time
+     * so users don't see 3500ms for trivially fast code.
+     */
+    private static final long WANDBOX_OVERHEAD_MS = 2500L;
 
     private final String pistonApiUrl;
     private final boolean enabled;
@@ -51,7 +57,7 @@ public class PistonCodeExecutor implements CodeExecutor {
     public PistonCodeExecutor(
             @Value("${app.execution.piston.url:https://emkc.org/api/v2/piston/execute}") String pistonApiUrl,
             @Value("${app.execution.piston.enabled:true}") boolean enabled,
-            @Value("${app.execution.piston.timeout-seconds:12}") int timeoutSeconds,
+            @Value("${app.execution.piston.timeout-seconds:20}") int timeoutSeconds,
             @Qualifier("multiLanguageExecutor") CodeExecutor fallbackExecutor,
             ObjectMapper objectMapper
     ) {
@@ -198,21 +204,27 @@ public class PistonCodeExecutor implements CodeExecutor {
         String programError = root.has("program_error") ? root.get("program_error").asText("") : "";
         String signal = root.has("signal") && !root.get("signal").isNull() ? root.get("signal").asText("") : "";
 
-        if ("SIGKILL".equalsIgnoreCase(signal) || "SIGTERM".equalsIgnoreCase(signal) || "Time limit exceeded".contains(programError)) {
-            return ExecutionResult.timeout(latencyMs);
+        // Normalize execution time: subtract Wandbox server startup/compile overhead
+        // so displayed time reflects actual code execution, not API round-trip latency
+        long normalizedTimeMs = Math.max(50L, latencyMs - WANDBOX_OVERHEAD_MS);
+
+        if ("SIGKILL".equalsIgnoreCase(signal) || "SIGTERM".equalsIgnoreCase(signal)
+                || (!programError.isBlank() && programError.toLowerCase().contains("time limit exceeded"))) {
+            log.info("Wandbox TLE detected (signal={}, latency={}ms)", signal, latencyMs);
+            return ExecutionResult.timeout(normalizedTimeMs);
         }
 
         if (!compilerError.isBlank() && status != 0) {
             log.debug("Wandbox compilation error in [{}ms]", latencyMs);
-            return ExecutionResult.compilationError(compilerError, status, latencyMs);
+            return ExecutionResult.compilationError(compilerError, status, normalizedTimeMs);
         }
 
         if (status == 0) {
-            log.debug("Wandbox execution succeeded in [{}ms]", latencyMs);
-            return ExecutionResult.success(programOutput, programError, 0, latencyMs, 32L * 1024 * 1024);
+            log.debug("Wandbox execution succeeded in [{}ms] (normalized from {}ms)", normalizedTimeMs, latencyMs);
+            return ExecutionResult.success(programOutput, programError, 0, normalizedTimeMs, 32L * 1024 * 1024);
         } else {
-            log.debug("Wandbox runtime error in [{}ms]", latencyMs);
-            return ExecutionResult.runtimeError(programOutput, !programError.isBlank() ? programError : compilerError, status, latencyMs);
+            log.debug("Wandbox runtime error in [{}ms]", normalizedTimeMs);
+            return ExecutionResult.runtimeError(programOutput, !programError.isBlank() ? programError : compilerError, status, normalizedTimeMs);
         }
     }
 

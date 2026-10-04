@@ -82,6 +82,30 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
         SupportedLanguage targetLang = SupportedLanguage.fromString(language);
         String executableCode = driverHarnessInjector.wrapUserCode(sourceCode, targetLang, problemSlug);
 
+        ExecutionRequest baseRequest = new ExecutionRequest(
+                executableCode,
+                null,
+                "",
+                timeoutMs > 0 ? timeoutMs : ExecutionRequest.DEFAULT_TIMEOUT_MS,
+                memoryLimitMb > 0 ? memoryLimitMb : ExecutionRequest.DEFAULT_MEMORY_LIMIT_MB,
+                ExecutionRequest.DEFAULT_CPU_QUOTA,
+                ExecutionRequest.DEFAULT_MAX_OUTPUT_SIZE_BYTES,
+                targetLang
+        );
+
+        List<String> stdinInputs = sortedCases.stream()
+                .map(tc -> tc.getInputData() != null ? tc.getInputData() : "")
+                .toList();
+
+        List<ExecutionResult> results = codeExecutor.executeBatch(baseRequest, stdinInputs);
+
+        // Check if early compilation error occurred
+        if (results.size() == 1 && results.get(0).failureReason() == ExecutionFailureReason.COMPILATION_ERROR) {
+            ExecutionResult compError = results.get(0);
+            log.info("Compilation failed during test case evaluation for language [{}]: {}", targetLang, compError.stderr());
+            return SubmissionEvaluationResult.compileError(compError.stderr(), compError.executionTimeMs());
+        }
+
         List<TestCaseEvaluationResult> evaluationResults = new ArrayList<>(sortedCases.size());
         int testsPassed = 0;
         long totalExecutionTimeMs = 0;
@@ -92,27 +116,16 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
             int testNumber = i + 1;
             boolean isHidden = tc.isHidden();
 
-            ExecutionRequest request = new ExecutionRequest(
-                    executableCode,
-                    null,
-                    tc.getInputData() != null ? tc.getInputData() : "",
-                    timeoutMs > 0 ? timeoutMs : ExecutionRequest.DEFAULT_TIMEOUT_MS,
-                    memoryLimitMb > 0 ? memoryLimitMb : ExecutionRequest.DEFAULT_MEMORY_LIMIT_MB,
-                    ExecutionRequest.DEFAULT_CPU_QUOTA,
-                    ExecutionRequest.DEFAULT_MAX_OUTPUT_SIZE_BYTES,
-                    targetLang
-            );
-
-            ExecutionResult result = codeExecutor.execute(request);
-            totalExecutionTimeMs += result.executionTimeMs();
-
-            // 1. Compilation Error aborts immediately
-            if (result.failureReason() == ExecutionFailureReason.COMPILATION_ERROR) {
-                log.info("Compilation failed during test case evaluation for language [{}]: {}", targetLang, result.stderr());
-                return SubmissionEvaluationResult.compileError(result.stderr(), totalExecutionTimeMs);
+            ExecutionResult result;
+            if (i < results.size()) {
+                result = results.get(i);
+            } else {
+                result = ExecutionResult.runtimeError("", "Execution did not produce a result for test case " + testNumber, -1, 0);
             }
 
-            // 2. Timeout
+            totalExecutionTimeMs += result.executionTimeMs();
+
+            // 1. Timeout
             if (result.failureReason() == ExecutionFailureReason.TIME_LIMIT_EXCEEDED) {
                 TestCaseEvaluationResult tcResult = TestCaseEvaluationResult.failed(
                         testNumber,
@@ -122,7 +135,7 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
                         tc.getExpectedOutput(),
                         "",
                         result.executionTimeMs(),
-                        "Time limit exceeded (" + request.timeoutMs() + "ms)"
+                        "Time limit exceeded (" + baseRequest.timeoutMs() + "ms)"
                 );
                 evaluationResults.add(tcResult);
                 if (overallVerdict == EvaluationVerdict.ACCEPTED) {
@@ -131,7 +144,7 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
                 continue;
             }
 
-            // 3. Memory Limit
+            // 2. Memory Limit
             if (result.failureReason() == ExecutionFailureReason.MEMORY_LIMIT_EXCEEDED) {
                 TestCaseEvaluationResult tcResult = TestCaseEvaluationResult.failed(
                         testNumber,
@@ -150,7 +163,7 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
                 continue;
             }
 
-            // 4. Runtime Error
+            // 3. Runtime Error
             if (result.failureReason() == ExecutionFailureReason.RUNTIME_ERROR || !result.success()) {
                 TestCaseEvaluationResult tcResult = TestCaseEvaluationResult.failed(
                         testNumber,
@@ -171,7 +184,7 @@ public class TestCaseEvaluatorImpl implements TestCaseEvaluator {
                 continue;
             }
 
-            // 5. Compare Output
+            // 4. Compare Output
             boolean matched = outputComparator.matches(tc.getExpectedOutput(), result.stdout());
             if (matched) {
                 testsPassed++;

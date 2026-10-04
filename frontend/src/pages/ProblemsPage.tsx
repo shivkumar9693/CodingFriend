@@ -187,12 +187,20 @@ export const ProblemsPage: React.FC = () => {
             </thead>
             <tbody>
               {filteredProblems.map((problem, index) => (
-                <tr key={problem.id} className="problem-row">
+                <tr
+                  key={problem.id}
+                  className="problem-row"
+                  onMouseEnter={() => problemService.prefetchProblem(problem.slug)}
+                >
                   <td className="row-number">
                     {currentPage * pageSize + index + 1}
                   </td>
                   <td className="row-title">
-                    <Link to={`/problems/${problem.slug}`} className="problem-title-link">
+                    <Link
+                      to={`/problems/${problem.slug}`}
+                      className="problem-title-link"
+                      onFocus={() => problemService.prefetchProblem(problem.slug)}
+                    >
                       {problem.title}
                     </Link>
                   </td>
@@ -209,7 +217,11 @@ export const ProblemsPage: React.FC = () => {
                     </div>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <Link to={`/problems/${problem.slug}`} className="btn btn-outline btn-sm">
+                    <Link
+                      to={`/problems/${problem.slug}`}
+                      className="btn btn-outline btn-sm"
+                      onMouseEnter={() => problemService.prefetchProblem(problem.slug)}
+                    >
                       Solve
                     </Link>
                   </td>

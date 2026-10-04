@@ -80,14 +80,252 @@ public class MultiLanguageExecutor implements CodeExecutor {
                 case CPP -> executeCpp(workspace, request, startTime);
                 case JAVASCRIPT -> executeJavaScript(workspace, request, startTime);
             };
-
         } catch (Exception ex) {
-            long elapsed = System.currentTimeMillis() - startTime;
             log.error("Unexpected error during multi-language sandbox execution", ex);
-            return ExecutionResult.systemError("System error during execution: " + ex.getMessage(), elapsed);
+            return ExecutionResult.systemError("System error during execution: " + ex.getMessage(), 0);
         } finally {
             cleanupWorkspace(workspace);
         }
+    }
+
+    @Override
+    public List<ExecutionResult> executeBatch(ExecutionRequest baseRequest, List<String> stdinInputs) {
+        if (baseRequest == null || baseRequest.sourceCode() == null || baseRequest.sourceCode().trim().isEmpty()) {
+            return List.of(ExecutionResult.invalidSource("Source code must not be null or empty."));
+        }
+        if (baseRequest.sourceCode().contains("\0")) {
+            return List.of(ExecutionResult.invalidSource("Source code contains illegal null byte characters."));
+        }
+        if (stdinInputs == null || stdinInputs.isEmpty()) {
+            return List.of(execute(baseRequest));
+        }
+
+        SupportedLanguage language = baseRequest.language() != null ? baseRequest.language() : SupportedLanguage.JAVA;
+        Path workspace = null;
+        try {
+            workspace = Files.createTempDirectory("sandbox-batch-");
+            return switch (language) {
+                case JAVA -> executeJavaBatch(workspace, baseRequest, stdinInputs);
+                case PYTHON -> executePythonBatch(workspace, baseRequest, stdinInputs);
+                case CPP -> executeCppBatch(workspace, baseRequest, stdinInputs);
+                case JAVASCRIPT -> executeJavaScriptBatch(workspace, baseRequest, stdinInputs);
+            };
+        } catch (Exception ex) {
+            log.error("Unexpected error during multi-language batch sandbox execution", ex);
+            return List.of(ExecutionResult.systemError("System error during batch execution: " + ex.getMessage(), 0));
+        } finally {
+            cleanupWorkspace(workspace);
+        }
+    }
+
+    private List<ExecutionResult> executeJavaBatch(Path workspace, ExecutionRequest request, List<String> stdinInputs) throws Exception {
+        String sourceCode = request.sourceCode();
+        if (!sourceCode.contains("import java.util.")) {
+            sourceCode = "import java.util.*;\nimport java.util.stream.*;\nimport java.io.*;\nimport java.math.*;\n" + sourceCode;
+        }
+        String className = resolveJavaClassName(sourceCode, request.className());
+        Path sourceFile = workspace.resolve(className + ".java");
+        Files.writeString(sourceFile, sourceCode, StandardCharsets.UTF_8);
+
+        // Step 1: Compile ONCE for all test cases
+        long compileStart = System.currentTimeMillis();
+        CompilationResult compileResult = compileJava(workspace, sourceFile, className);
+        long compileDuration = System.currentTimeMillis() - compileStart;
+
+        if (!compileResult.success()) {
+            return List.of(ExecutionResult.compilationError(compileResult.stderr(), compileResult.exitCode(), compileDuration));
+        }
+
+        // Step 2: Run pre-compiled bytecode against each input
+        List<ExecutionResult> results = new ArrayList<>(stdinInputs.size());
+        for (String input : stdinInputs) {
+            ExecutionRequest singleReq = new ExecutionRequest(
+                    request.sourceCode(),
+                    request.className(),
+                    input,
+                    request.timeoutMs(),
+                    request.memoryLimitMb(),
+                    request.cpuQuota(),
+                    request.maxOutputSizeBytes(),
+                    request.language()
+            );
+
+            long runStart = System.currentTimeMillis();
+            ProcessBuilder pb;
+            if (dockerAvailable) {
+                int memLimit = request.memoryLimitMb();
+                int jvmHeap = Math.max(32, memLimit - 64);
+                List<String> cmd = List.of(
+                        "docker", "run", "--rm", "-i",
+                        "--network", "none",
+                        "--memory", memLimit + "m",
+                        "--cpus", String.valueOf(request.cpuQuota()),
+                        "-v", workspace.toAbsolutePath() + ":/workspace:ro",
+                        "-w", "/workspace",
+                        DOCKER_JAVA_IMAGE,
+                        "java", "-Xmx" + jvmHeap + "m", "-XX:+UseSerialGC", "-Dfile.encoding=UTF-8", "-cp", "/workspace", className
+                );
+                pb = new ProcessBuilder(cmd);
+            } else {
+                String javaPath = getJdkToolPath("java");
+                int jvmHeap = Math.max(32, request.memoryLimitMb() - 32);
+                List<String> cmd = List.of(
+                        javaPath,
+                        "-Xmx" + jvmHeap + "m",
+                        "-XX:+UseSerialGC",
+                        "-Dfile.encoding=UTF-8",
+                        "-cp", workspace.toAbsolutePath().toString(),
+                        className
+                );
+                pb = new ProcessBuilder(cmd);
+                pb.directory(workspace.toFile());
+                sanitizeEnvironment(pb);
+            }
+            results.add(runProcess(pb, singleReq, runStart));
+        }
+        return results;
+    }
+
+    private List<ExecutionResult> executePythonBatch(Path workspace, ExecutionRequest request, List<String> stdinInputs) throws Exception {
+        Path scriptFile = workspace.resolve("solution.py");
+        Files.writeString(scriptFile, request.sourceCode(), StandardCharsets.UTF_8);
+
+        List<ExecutionResult> results = new ArrayList<>(stdinInputs.size());
+        for (String input : stdinInputs) {
+            ExecutionRequest singleReq = new ExecutionRequest(
+                    request.sourceCode(),
+                    request.className(),
+                    input,
+                    request.timeoutMs(),
+                    request.memoryLimitMb(),
+                    request.cpuQuota(),
+                    request.maxOutputSizeBytes(),
+                    request.language()
+            );
+
+            long runStart = System.currentTimeMillis();
+            ProcessBuilder pb;
+            if (dockerAvailable) {
+                List<String> cmd = List.of(
+                        "docker", "run", "--rm", "-i",
+                        "--network", "none",
+                        "--memory", request.memoryLimitMb() + "m",
+                        "--cpus", String.valueOf(request.cpuQuota()),
+                        "-v", workspace.toAbsolutePath() + ":/workspace:ro",
+                        "-w", "/workspace",
+                        DOCKER_PYTHON_IMAGE,
+                        "python", "-u", "solution.py"
+                );
+                pb = new ProcessBuilder(cmd);
+            } else {
+                String pythonCmd = findPythonExecutable();
+                List<String> cmd = List.of(pythonCmd, "-u", scriptFile.toAbsolutePath().toString());
+                pb = new ProcessBuilder(cmd);
+                pb.directory(workspace.toFile());
+                sanitizeEnvironment(pb);
+            }
+            results.add(runProcess(pb, singleReq, runStart));
+        }
+        return results;
+    }
+
+    private List<ExecutionResult> executeCppBatch(Path workspace, ExecutionRequest request, List<String> stdinInputs) throws Exception {
+        Path sourceFile = workspace.resolve("solution.cpp");
+        Files.writeString(sourceFile, request.sourceCode(), StandardCharsets.UTF_8);
+
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String exeName = isWindows && !dockerAvailable ? "solution.exe" : "solution";
+        Path exePath = workspace.resolve(exeName);
+
+        // Step 1: Compile ONCE for all test cases
+        long compileStart = System.currentTimeMillis();
+        CompilationResult compileResult = compileCpp(workspace, sourceFile, exePath);
+        long compileDuration = System.currentTimeMillis() - compileStart;
+
+        if (!compileResult.success()) {
+            return List.of(ExecutionResult.compilationError(compileResult.stderr(), compileResult.exitCode(), compileDuration));
+        }
+
+        // Step 2: Run compiled executable against each input
+        List<ExecutionResult> results = new ArrayList<>(stdinInputs.size());
+        for (String input : stdinInputs) {
+            ExecutionRequest singleReq = new ExecutionRequest(
+                    request.sourceCode(),
+                    request.className(),
+                    input,
+                    request.timeoutMs(),
+                    request.memoryLimitMb(),
+                    request.cpuQuota(),
+                    request.maxOutputSizeBytes(),
+                    request.language()
+            );
+
+            long runStart = System.currentTimeMillis();
+            ProcessBuilder pb;
+            if (dockerAvailable) {
+                List<String> cmd = List.of(
+                        "docker", "run", "--rm", "-i",
+                        "--network", "none",
+                        "--memory", request.memoryLimitMb() + "m",
+                        "--cpus", String.valueOf(request.cpuQuota()),
+                        "-v", workspace.toAbsolutePath() + ":/workspace:ro",
+                        "-w", "/workspace",
+                        DOCKER_CPP_IMAGE,
+                        "./solution"
+                );
+                pb = new ProcessBuilder(cmd);
+            } else {
+                List<String> cmd = List.of(exePath.toAbsolutePath().toString());
+                pb = new ProcessBuilder(cmd);
+                pb.directory(workspace.toFile());
+                sanitizeEnvironment(pb);
+            }
+            results.add(runProcess(pb, singleReq, runStart));
+        }
+        return results;
+    }
+
+    private List<ExecutionResult> executeJavaScriptBatch(Path workspace, ExecutionRequest request, List<String> stdinInputs) throws Exception {
+        Path scriptFile = workspace.resolve("solution.js");
+        Files.writeString(scriptFile, request.sourceCode(), StandardCharsets.UTF_8);
+
+        List<ExecutionResult> results = new ArrayList<>(stdinInputs.size());
+        for (String input : stdinInputs) {
+            ExecutionRequest singleReq = new ExecutionRequest(
+                    request.sourceCode(),
+                    request.className(),
+                    input,
+                    request.timeoutMs(),
+                    request.memoryLimitMb(),
+                    request.cpuQuota(),
+                    request.maxOutputSizeBytes(),
+                    request.language()
+            );
+
+            long runStart = System.currentTimeMillis();
+            ProcessBuilder pb;
+            if (dockerAvailable) {
+                List<String> cmd = List.of(
+                        "docker", "run", "--rm", "-i",
+                        "--network", "none",
+                        "--memory", request.memoryLimitMb() + "m",
+                        "--cpus", String.valueOf(request.cpuQuota()),
+                        "-v", workspace.toAbsolutePath() + ":/workspace:ro",
+                        "-w", "/workspace",
+                        DOCKER_NODE_IMAGE,
+                        "node", "solution.js"
+                );
+                pb = new ProcessBuilder(cmd);
+            } else {
+                String nodeCmd = findNodeExecutable();
+                List<String> cmd = List.of(nodeCmd, scriptFile.toAbsolutePath().toString());
+                pb = new ProcessBuilder(cmd);
+                pb.directory(workspace.toFile());
+                sanitizeEnvironment(pb);
+            }
+            results.add(runProcess(pb, singleReq, runStart));
+        }
+        return results;
     }
 
     // ==========================================
@@ -222,27 +460,9 @@ public class MultiLanguageExecutor implements CodeExecutor {
         // Step 1: Compile C++
         long compileStart = System.currentTimeMillis();
         String outputBinary = isWindows() ? "solution.exe" : "solution";
-        ProcessBuilder pbCompile;
+        Path exePath = workspace.resolve(outputBinary);
 
-        if (dockerAvailable) {
-            List<String> cmd = List.of(
-                    "docker", "run", "--rm",
-                    "--network", "none",
-                    "--memory", "512m",
-                    "-v", workspace.toAbsolutePath() + ":/workspace:rw",
-                    "-w", "/workspace",
-                    DOCKER_CPP_IMAGE,
-                    "g++", "-O3", "-std=c++17", "solution.cpp", "-o", "solution"
-            );
-            pbCompile = new ProcessBuilder(cmd);
-        } else {
-            List<String> cmd = List.of("g++", "-O3", "-std=c++17", "solution.cpp", "-o", outputBinary);
-            pbCompile = new ProcessBuilder(cmd);
-            pbCompile.directory(workspace.toFile());
-            sanitizeEnvironment(pbCompile);
-        }
-
-        CompilationResult compileResult = runCompilationProcess(pbCompile);
+        CompilationResult compileResult = compileCpp(workspace, sourceFile, exePath);
         long compileDuration = System.currentTimeMillis() - compileStart;
         if (!compileResult.success()) {
             return ExecutionResult.compilationError(compileResult.stderr(), compileResult.exitCode(), compileDuration);
@@ -264,8 +484,7 @@ public class MultiLanguageExecutor implements CodeExecutor {
             );
             pbRun = new ProcessBuilder(cmd);
         } else {
-            Path binPath = workspace.resolve(outputBinary);
-            List<String> cmd = List.of(binPath.toAbsolutePath().toString());
+            List<String> cmd = List.of(exePath.toAbsolutePath().toString());
             pbRun = new ProcessBuilder(cmd);
             pbRun.directory(workspace.toFile());
             sanitizeEnvironment(pbRun);
@@ -398,6 +617,36 @@ public class MultiLanguageExecutor implements CodeExecutor {
             return "python";
         }
         return "python3";
+    }
+
+    private String findNodeExecutable() {
+        if (isWindows()) {
+            return "node.exe";
+        }
+        return "node";
+    }
+
+    private CompilationResult compileCpp(Path workspace, Path sourceFile, Path exePath) throws IOException, InterruptedException {
+        ProcessBuilder pbCompile;
+        if (dockerAvailable) {
+            List<String> cmd = List.of(
+                    "docker", "run", "--rm",
+                    "--network", "none",
+                    "--memory", "512m",
+                    "-v", workspace.toAbsolutePath() + ":/workspace:rw",
+                    "-w", "/workspace",
+                    DOCKER_CPP_IMAGE,
+                    "g++", "-O3", "-std=c++17", "solution.cpp", "-o", "solution"
+            );
+            pbCompile = new ProcessBuilder(cmd);
+        } else {
+            String binaryName = exePath.getFileName().toString();
+            List<String> cmd = List.of("g++", "-O3", "-std=c++17", "solution.cpp", "-o", binaryName);
+            pbCompile = new ProcessBuilder(cmd);
+            pbCompile.directory(workspace.toFile());
+            sanitizeEnvironment(pbCompile);
+        }
+        return runCompilationProcess(pbCompile);
     }
 
     private void cleanupWorkspace(Path workspace) {

@@ -78,8 +78,18 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
 
-        // 1. Custom or override provider if explicitly supplied
-        if (customApiKey != null && !customApiKey.isBlank()) {
+        // 1. Groq Cloud Provider (Current Active Production Models: Qwen first, then GPT-OSS & Llama)
+        if (groqApiKey != null && !groqApiKey.isBlank()) {
+            providers.add(new CloudProvider(
+                    "Groq-Cloud",
+                    "https://api.groq.com/openai/v1",
+                    groqApiKey.trim(),
+                    List.of("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
+            ));
+        }
+
+        // 2. Custom or override provider if explicitly supplied
+        if (customApiKey != null && !customApiKey.isBlank() && !customApiKey.equals(groqApiKey)) {
             String bUrl = (customBaseUrl != null && !customBaseUrl.isBlank())
                     ? customBaseUrl.replaceAll("/+$", "")
                     : (customApiKey.startsWith("AIza") || customApiKey.startsWith("AQ.")
@@ -87,24 +97,14 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
                         : "https://api.groq.com/openai/v1");
             String defaultMod = (customModel != null && !customModel.isBlank())
                     ? customModel
-                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash" : "llama-3.3-70b-versatile");
+                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash" : "qwen/qwen3.8-27b");
             List<String> models = bUrl.contains("googleapis")
                     ? List.of(defaultMod, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
-                    : List.of(defaultMod, "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it");
+                    : List.of(defaultMod, "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b");
             providers.add(new CloudProvider("Custom-AI", bUrl, customApiKey.trim(), models));
         }
 
-        // 2. Groq Cloud Provider (Current Active Production Groq Models)
-        if (groqApiKey != null && !groqApiKey.isBlank()) {
-            providers.add(new CloudProvider(
-                    "Groq-Cloud",
-                    "https://api.groq.com/openai/v1",
-                    groqApiKey.trim(),
-                    List.of("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it")
-            ));
-        }
-
-        // 3. Google Gemini OpenAI-compatible Provider (Current Active Production Gemini Models)
+        // 3. Google Gemini Provider
         if (geminiApiKey != null && !geminiApiKey.isBlank()) {
             providers.add(new CloudProvider(
                     "Google-Gemini",

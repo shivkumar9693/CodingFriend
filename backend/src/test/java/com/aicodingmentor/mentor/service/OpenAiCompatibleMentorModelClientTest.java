@@ -93,7 +93,7 @@ class OpenAiCompatibleMentorModelClientTest {
 
         assertThat(result).isPresent();
         assertThat(result.get()).contains("Check your loop boundary.");
-        assertThat(client.getModelName()).isEqualTo("llama-3.3-70b-versatile");
+        assertThat(client.getModelName()).isEqualTo("qwen/qwen3.8-27b");
     }
 
     @Test

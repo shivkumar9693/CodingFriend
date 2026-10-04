@@ -86,16 +86,26 @@ public class PistonCodeExecutor implements CodeExecutor {
     @Override
     public ExecutionResult execute(ExecutionRequest request) {
         if (!enabled) {
-            log.debug("Piston execution disabled via config. Using fallback executor.");
+            log.debug("Cloud execution disabled via config. Using fallback executor.");
             return fallbackExecutor.execute(request);
         }
 
+        // 1. Try Wandbox (100% Free, Public, Open API - No Whitelist)
+        try {
+            return executeViaWandbox(request);
+        } catch (Exception ex) {
+            log.warn("Wandbox execution failed: [{}]. Cascading to Piston...", ex.getMessage());
+        }
+
+        // 2. Try Piston API
         try {
             return executeViaPiston(request);
         } catch (Exception ex) {
-            log.warn("Piston execution failed with error: [{}]. Cascading to local fallback executor...", ex.getMessage());
-            return fallbackExecutor.execute(request);
+            log.warn("Piston execution failed: [{}]. Cascading to local fallback executor...", ex.getMessage());
         }
+
+        // 3. Fallback to local container sandbox
+        return fallbackExecutor.execute(request);
     }
 
     @Override
@@ -125,7 +135,14 @@ public class PistonCodeExecutor implements CodeExecutor {
 
             if (!encounteredCloudFailure) {
                 try {
-                    ExecutionResult result = executeViaPiston(singleRequest);
+                    // Try Wandbox first, then Piston
+                    ExecutionResult result;
+                    try {
+                        result = executeViaWandbox(singleRequest);
+                    } catch (Exception wandboxEx) {
+                        result = executeViaPiston(singleRequest);
+                    }
+
                     batchResults.add(result);
 
                     // If compilation error occurred on first test case, short-circuit remaining batch
@@ -133,7 +150,7 @@ public class PistonCodeExecutor implements CodeExecutor {
                         break;
                     }
                 } catch (Exception ex) {
-                    log.warn("Piston batch execution encountered network issue: [{}]. Falling back remaining batch to local executor.", ex.getMessage());
+                    log.warn("Cloud batch execution failed: [{}]. Falling back remaining batch to local executor.", ex.getMessage());
                     encounteredCloudFailure = true;
                     batchResults.add(fallbackExecutor.execute(singleRequest));
                 }
@@ -143,6 +160,72 @@ public class PistonCodeExecutor implements CodeExecutor {
         }
 
         return batchResults;
+    }
+
+    private ExecutionResult executeViaWandbox(ExecutionRequest request) throws IOException, InterruptedException {
+        long startTime = System.currentTimeMillis();
+        String compiler = mapWandboxCompiler(request.language());
+
+        Map<String, Object> payloadMap = new java.util.HashMap<>();
+        payloadMap.put("compiler", compiler);
+        payloadMap.put("code", request.sourceCode() != null ? request.sourceCode() : "");
+        payloadMap.put("stdin", request.stdin() != null ? request.stdin() : "");
+
+        String jsonPayload = objectMapper.writeValueAsString(payloadMap);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create("https://wandbox.org/api/compile.json"))
+                .header("Content-Type", "application/json")
+                .timeout(timeout)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        long latencyMs = System.currentTimeMillis() - startTime;
+
+        if (response.statusCode() != 200) {
+            throw new IOException("Wandbox returned HTTP " + response.statusCode() + ": " + response.body());
+        }
+
+        JsonNode root = objectMapper.readTree(response.body());
+        if (!root.has("status") || !root.has("program_output")) {
+            throw new IOException("Malformed Wandbox response payload: " + response.body());
+        }
+
+        int status = root.has("status") && !root.get("status").isNull() ? root.get("status").asInt(0) : 0;
+        String compilerError = root.has("compiler_error") ? root.get("compiler_error").asText("") : "";
+        String programOutput = root.has("program_output") ? root.get("program_output").asText("") : "";
+        String programError = root.has("program_error") ? root.get("program_error").asText("") : "";
+        String signal = root.has("signal") && !root.get("signal").isNull() ? root.get("signal").asText("") : "";
+
+        if ("SIGKILL".equalsIgnoreCase(signal) || "SIGTERM".equalsIgnoreCase(signal) || "Time limit exceeded".contains(programError)) {
+            return ExecutionResult.timeout(latencyMs);
+        }
+
+        if (!compilerError.isBlank() && status != 0) {
+            log.debug("Wandbox compilation error in [{}ms]", latencyMs);
+            return ExecutionResult.compilationError(compilerError, status, latencyMs);
+        }
+
+        if (status == 0) {
+            log.debug("Wandbox execution succeeded in [{}ms]", latencyMs);
+            return ExecutionResult.success(programOutput, programError, 0, latencyMs, 32L * 1024 * 1024);
+        } else {
+            log.debug("Wandbox runtime error in [{}ms]", latencyMs);
+            return ExecutionResult.runtimeError(programOutput, !programError.isBlank() ? programError : compilerError, status, latencyMs);
+        }
+    }
+
+    private String mapWandboxCompiler(SupportedLanguage language) {
+        if (language == null) {
+            return "openjdk-jdk-21+35";
+        }
+        return switch (language) {
+            case JAVA -> "openjdk-jdk-21+35";
+            case PYTHON -> "cpython-3.12.7";
+            case CPP -> "gcc-13.2.0";
+            case JAVASCRIPT -> "nodejs-20.17.0";
+        };
     }
 
     private ExecutionResult executeViaPiston(ExecutionRequest request) throws IOException, InterruptedException {

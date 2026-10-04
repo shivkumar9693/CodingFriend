@@ -235,6 +235,7 @@ For full frontend documentation, see [frontend/README.md](frontend/README.md).
 
 Comprehensive project documentation is available in the [`docs/`](docs/) directory:
 
+- [Next-Gen Placement Prep & AI Mock Interviewer Plan](docs/next-generation-placement-and-ai-interviewer-plan.md)
 - [Future Product Vision & Strategic Technical Roadmap](docs/future-roadmap.md)
 - [Architecture Overview](docs/architecture.md)
 - [Requirements & Specifications](docs/requirements.md)

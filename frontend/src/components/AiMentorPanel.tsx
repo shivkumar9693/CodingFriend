@@ -114,32 +114,54 @@ export const AiMentorPanel: React.FC<AiMentorPanelProps> = ({
         }
       }
 
-      // Seamless fallback to SocraBuddy general problem hint service
+      // Seamless fallback to SocraBuddy general problem hint service with real-time streaming
       if (submission.problemId && submission.sourceCode) {
-        const mentorRes = await mentorService.getHint({
-          problemId: submission.problemId,
-          sourceCode: submission.sourceCode,
-          hintLevel: mapLevelToHintEnum(level),
-          lastErrorMessage: submission.errorMessage || undefined,
-        });
-        const hintText = mentorRes.socraticQuestion
-          ? `${mentorRes.guidance} ${mentorRes.socraticQuestion}`
-          : mentorRes.guidance || 'Review your logic carefully.';
+        let streamAccumulator = '';
         setHint({
           mistakeType: submission.verdict || 'LOGICAL_ERROR',
           hintLevel: level,
-          hint: hintText,
-          concept: mentorRes.conceptKeywords?.length ? mentorRes.conceptKeywords.join(', ') : undefined,
+          hint: '',
+          concept: undefined,
           revealsSolution: level === 5,
         });
         setCurrentLevel(level);
+
+        await mentorService.streamHint(
+          {
+            problemId: submission.problemId,
+            sourceCode: submission.sourceCode,
+            hintLevel: mapLevelToHintEnum(level),
+            lastErrorMessage: submission.errorMessage || undefined,
+          },
+          (token) => {
+            streamAccumulator += token;
+            setHint((prev) => (prev ? { ...prev, hint: streamAccumulator } : null));
+          },
+          (mentorRes) => {
+            const hintText = mentorRes.socraticQuestion
+              ? `${mentorRes.guidance} ${mentorRes.socraticQuestion}`
+              : mentorRes.guidance || 'Review your logic carefully.';
+            setHint({
+              mistakeType: submission.verdict || 'LOGICAL_ERROR',
+              hintLevel: level,
+              hint: hintText,
+              concept: mentorRes.conceptKeywords?.length ? mentorRes.conceptKeywords.join(', ') : undefined,
+              revealsSolution: level === 5,
+            });
+            setIsLoading(false);
+          },
+          (err: any) => {
+            const msg = err?.response?.data?.message || err?.message || 'AI mentor service is temporarily unavailable.';
+            setError(msg);
+            setIsLoading(false);
+          }
+        );
       } else {
         throw new Error('Problem context is missing to generate Socratic hint.');
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'AI mentor service is temporarily unavailable.';
       setError(msg);
-    } finally {
       setIsLoading(false);
     }
   }, [submission]);

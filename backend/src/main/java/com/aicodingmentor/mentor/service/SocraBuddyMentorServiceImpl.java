@@ -14,13 +14,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Service
@@ -34,6 +41,12 @@ public class SocraBuddyMentorServiceImpl implements SocraBuddyMentorService {
     private final PromptBuilder promptBuilder;
     private final ObjectMapper objectMapper;
 
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
+
+    private record CachedHintEntry(SocraBuddyHintResponse response, long expiresAt) {}
+    private final ConcurrentHashMap<String, CachedHintEntry> memoryCache = new ConcurrentHashMap<>();
+
     public SocraBuddyMentorServiceImpl(
             ProblemRepository problemRepository,
             MentorModelClient mentorModelClient,
@@ -44,6 +57,105 @@ public class SocraBuddyMentorServiceImpl implements SocraBuddyMentorService {
         this.mentorModelClient = mentorModelClient;
         this.promptBuilder = promptBuilder;
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public SseEmitter streamHint(UUID userId, SocraBuddyHintRequest request) {
+        SseEmitter emitter = new SseEmitter(60_000L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                String sourceCode = request.sourceCode() != null ? request.sourceCode() : "";
+                String cacheKey = "mentor:hint:" + request.problemId() + ":" + request.hintLevel() + ":" + Integer.toHexString(sourceCode.trim().hashCode());
+
+                SocraBuddyHintResponse response = getCachedHint(cacheKey);
+                if (response == null) {
+                    response = generateHint(userId, request);
+                    putCachedHint(cacheKey, response, Duration.ofHours(2));
+                }
+
+                // Send start event
+                emitter.send(SseEmitter.event()
+                        .name("start")
+                        .data(Map.of(
+                                "hintLevel", response.hintLevel(),
+                                "title", response.title() != null ? response.title() : "SocraBuddy's Insight",
+                                "modelName", response.modelUsed() != null ? response.modelUsed() : "SocraBuddy"
+                        )));
+
+                // Tokenize guidance into words/punctuation chunks
+                String guidance = response.guidance() != null ? response.guidance() : "";
+                String[] words = guidance.split("(?<=\\s)|(?<=[.,!?])");
+                for (String word : words) {
+                    if (!word.isEmpty()) {
+                        emitter.send(SseEmitter.event()
+                                .name("token")
+                                .data(Map.of("token", word)));
+                        Thread.sleep(16); // ~60 words/sec smooth streaming animation
+                    }
+                }
+
+                if (response.socraticQuestion() != null && !response.socraticQuestion().isBlank()) {
+                    emitter.send(SseEmitter.event().name("token").data(Map.of("token", "\n\n💡 ")));
+                    String[] qWords = response.socraticQuestion().split("(?<=\\s)|(?<=[.,!?])");
+                    for (String word : qWords) {
+                        if (!word.isEmpty()) {
+                            emitter.send(SseEmitter.event()
+                                    .name("token")
+                                    .data(Map.of("token", word)));
+                            Thread.sleep(16);
+                        }
+                    }
+                }
+
+                // Send complete event with full structured payload
+                emitter.send(SseEmitter.event()
+                        .name("complete")
+                        .data(response));
+
+                emitter.complete();
+
+            } catch (Exception ex) {
+                log.error("Error streaming Socratic hint for user {}", userId, ex);
+                try {
+                    emitter.send(SseEmitter.event().name("error").data(Map.of("message", "Hint stream error: " + ex.getMessage())));
+                } catch (Exception ignored) {}
+                emitter.completeWithError(ex);
+            }
+        });
+
+        return emitter;
+    }
+
+    private SocraBuddyHintResponse getCachedHint(String cacheKey) {
+        if (redisTemplate != null) {
+            try {
+                String json = redisTemplate.opsForValue().get(cacheKey);
+                if (json != null && !json.isBlank()) {
+                    return objectMapper.readValue(json, SocraBuddyHintResponse.class);
+                }
+            } catch (Exception ex) {
+                log.warn("Redis hint cache read failed, checking memory fallback: {}", ex.getMessage());
+            }
+        }
+        CachedHintEntry entry = memoryCache.get(cacheKey);
+        if (entry != null && System.currentTimeMillis() < entry.expiresAt()) {
+            return entry.response();
+        }
+        return null;
+    }
+
+    private void putCachedHint(String cacheKey, SocraBuddyHintResponse response, Duration ttl) {
+        if (response == null) return;
+        if (redisTemplate != null) {
+            try {
+                String json = objectMapper.writeValueAsString(response);
+                redisTemplate.opsForValue().set(cacheKey, json, ttl);
+            } catch (Exception ex) {
+                log.warn("Redis hint cache write failed, writing to memory fallback: {}", ex.getMessage());
+            }
+        }
+        memoryCache.put(cacheKey, new CachedHintEntry(response, System.currentTimeMillis() + ttl.toMillis()));
     }
 
     @Override

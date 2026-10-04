@@ -13,6 +13,8 @@ public interface SocraBuddyMentorService {
 
     SocraBuddyHintResponse generateHint(UUID userId, SocraBuddyHintRequest request);
 
+    org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamHint(UUID userId, SocraBuddyHintRequest request);
+
     SocraBuddyDiagnosisResponse diagnoseMistake(UUID userId, SocraBuddyDiagnosisRequest request);
 
     InlineAssistResponse generateInlineAssist(UUID userId, InlineAssistRequest request);

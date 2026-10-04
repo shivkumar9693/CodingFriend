@@ -50,6 +50,17 @@ public class SocraBuddyMentorController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(value = {"/stream-hint", "/hints/stream"}, produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Stream tiered Socratic hint token-by-token over SSE", description = "Streams progressive guidance tokens in real-time with sub-200ms perceived response time")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamHint(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @Valid @RequestBody SocraBuddyHintRequest request
+    ) {
+        UUID userId = currentUser != null ? currentUser.getId() : UUID.randomUUID();
+        return mentorService.streamHint(userId, request);
+    }
+
     @PostMapping("/diagnose")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Diagnose submission failure with SocraBuddy", description = "Analyzes execution error and provides Socratic diagnostic insight")

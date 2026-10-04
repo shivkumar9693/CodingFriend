@@ -20,14 +20,8 @@ spring:
     locations: classpath:db/migration
   data:
     redis:
-      url: ${REDIS_URL:}
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      username: ${REDIS_USERNAME:}
-      ssl:
-        enabled: ${REDIS_SSL_ENABLED:false}
-      timeout: ${REDIS_TIMEOUT_MS:2000}ms
+      url: ${REDIS_URL:rediss://default:gQAAAAAAAu-MAAIgcDE1MThhMDllNGI4NzM0YzY0YWJjMThmNjgwNzliN2I1Mw@cheerful-bedbug-192396.upstash.io:6379}
+      timeout: ${REDIS_TIMEOUT_MS:5000}ms
 
 management:
   endpoint:

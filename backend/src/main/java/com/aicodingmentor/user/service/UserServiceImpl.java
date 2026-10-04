@@ -29,6 +29,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(value = "user-profile", key = "#userId.toString()", unless = "#result == null")
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(UUID userId) {
         if (userId == null) {
@@ -42,6 +43,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Caching(evict = {
+            @org.springframework.cache.annotation.CacheEvict(value = "user-profile", key = "#userId.toString()"),
+            @org.springframework.cache.annotation.CacheEvict(value = "user-auth-id", key = "#userId.toString()"),
+            @org.springframework.cache.annotation.CacheEvict(value = "user-auth-email", allEntries = true)
+    })
     @Transactional
     public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         if (userId == null) {
@@ -65,6 +71,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(value = "user-activity", key = "#userId.toString()", unless = "#result == null")
     @Transactional(readOnly = true)
     public com.aicodingmentor.user.dto.ActivityHeatmapDto getActivityHeatmap(UUID userId) {
         if (userId == null) {

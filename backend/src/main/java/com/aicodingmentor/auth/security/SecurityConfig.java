@@ -66,8 +66,10 @@ public class SecurityConfig {
                                 "/api/test/public",
                                 "/api/submissions/run",
                                 "/api/v1/submissions/run",
-                                "/api/mentor/**",
-                                "/api/v1/mentor/**"
+                                "/ws-duel/**",
+                                "/ws-duel",
+                                "/ws-duel-native/**",
+                                "/ws-duel-native"
                         ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,

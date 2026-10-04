@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -241,22 +241,78 @@ export const ProblemDetailPage: React.FC = () => {
   const [debugSession, setDebugSession] = useState<DebugSession | null>(null);
   const [activeDebugLine, setActiveDebugLine] = useState<number | null>(null);
 
-  const handleToggleDebugger = () => {
-    if (panelTab === 'debugger') {
-      setPanelTab('statement');
-      setActiveDebugLine(null);
-    } else {
-      const session = VisualDebuggerService.generateDebugSession(
-        code || problem?.starterCode || '',
-        problem?.title || 'Algorithm Visualizer',
-        problem?.sampleTestCases?.[0]?.inputData || 'nums = [2, 7, 11, 15], target = 9',
-        selectedLanguage
-      );
-      setDebugSession(session);
-      setPanelTab('debugger');
-      setActiveDebugLine(session.steps[0]?.lineNumber || 1);
+  // Keyboard Shortcuts (LeetCode Parity)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Submit Code: Ctrl+Alt+Enter or Cmd+Shift+Enter
+      if ((e.ctrlKey && e.altKey && e.key === 'Enter') || (e.metaKey && e.shiftKey && e.key === 'Enter')) {
+        e.preventDefault();
+        if (!isRunning && !isSubmitting) {
+          handleSubmitCode();
+        }
+        return;
+      }
+
+      // 2. Run Code: Ctrl+Enter or Cmd+Enter
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isRunning && !isSubmitting) {
+          handleRunCode();
+        }
+        return;
+      }
+
+      // 3. Toggle SocraBuddy Modal: Ctrl+/ or Cmd+/
+      if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.code === 'Slash')) {
+        e.preventDefault();
+        setIsMentorOpen((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRunning, isSubmitting, code, problem, selectedLanguage, isAuthenticated]);
+
+  // Fluid Split-Pane Resizing State (Persisted in localStorage)
+  const [splitPercent, setSplitPercent] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('codingfriend_split_h_percent');
+      return saved ? Math.min(Math.max(Number(saved), 25), 75) : 50;
+    } catch {
+      return 50;
     }
-  };
+  });
+  const isDraggingRef = useRef<boolean>(false);
+
+  const startHorizontalResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const totalWidth = window.innerWidth;
+      const newPercent = (moveEvent.clientX / totalWidth) * 100;
+      const clamped = Math.min(Math.max(newPercent, 25), 75);
+      setSplitPercent(clamped);
+    };
+
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      try {
+        localStorage.setItem('codingfriend_split_h_percent', String(splitPercent));
+      } catch {}
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [splitPercent]);
 
   const showToast = (toast: Omit<ActiveToast, 'id'>) => {
     setActiveToast({ ...toast, id: String(Date.now()) });
@@ -496,6 +552,25 @@ export const ProblemDetailPage: React.FC = () => {
     setIsMentorOpen(true);
   };
 
+  const handleToggleDebugger = () => {
+    if (panelTab === 'debugger') {
+      setPanelTab('statement');
+      setActiveDebugLine(null);
+    } else {
+      const session = VisualDebuggerService.generateDebugSession(
+        code || problem?.starterCode || '',
+        problem?.title || 'Algorithm Visualizer',
+        problem?.sampleTestCases?.[0]?.inputData || 'nums = [2, 7, 11, 15], target = 9',
+        selectedLanguage
+      );
+      setDebugSession(session);
+      setPanelTab('debugger');
+      if (session.steps.length > 0) {
+        setActiveDebugLine(session.steps[0].lineNumber);
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="page-container center-loader" data-testid="problem-loading">
@@ -545,7 +620,7 @@ export const ProblemDetailPage: React.FC = () => {
             onClick={handleRunCode}
             disabled={isRunning || isSubmitting}
             data-testid="top-run-code-btn"
-            title="Execute solution against isolated sandbox test suite"
+            title="Execute solution against isolated sandbox test suite (Ctrl + Enter)"
           >
             {isRunning ? (
               <>
@@ -556,6 +631,7 @@ export const ProblemDetailPage: React.FC = () => {
               <>
                 <Play size={13} />
                 <span>Run</span>
+                <kbd className="btn-key-badge">Ctrl+↵</kbd>
               </>
             )}
           </button>
@@ -566,7 +642,7 @@ export const ProblemDetailPage: React.FC = () => {
             onClick={handleSubmitCode}
             disabled={isRunning || isSubmitting}
             data-testid="top-submit-code-btn"
-            title="Submit solution for full grading and SocraBuddy evaluation"
+            title="Submit solution for full grading and SocraBuddy evaluation (Ctrl + Alt + Enter)"
           >
             {isSubmitting ? (
               <>
@@ -577,6 +653,7 @@ export const ProblemDetailPage: React.FC = () => {
               <>
                 <Send size={13} />
                 <span>Submit</span>
+                <kbd className="btn-key-badge">Ctrl+Alt+↵</kbd>
               </>
             )}
           </button>
@@ -603,7 +680,12 @@ export const ProblemDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="problem-workspace-grid">
+      <div
+        className="problem-workspace-grid"
+        style={{
+          gridTemplateColumns: window.innerWidth > 992 ? `minmax(320px, ${splitPercent}%) 8px minmax(320px, 1fr)` : undefined,
+        }}
+      >
         {/* Left Column: Problem Statement, Submissions & LeetCode-style Result Tab */}
         <div className={`problem-statement-panel ${mobileTab !== 'problem' ? 'mobile-hidden' : ''}`}>
           <div className="problem-header-card">
@@ -905,6 +987,17 @@ export const ProblemDetailPage: React.FC = () => {
               )}
             </section>
           )}
+        </div>
+
+        {/* Draggable Fluid Split Resizer */}
+        <div
+          className="workspace-split-resizer"
+          onMouseDown={startHorizontalResize}
+          role="separator"
+          aria-label="Resize workspace columns"
+          title="Drag to resize workspace panels"
+        >
+          <div className="resizer-handle-pill" />
         </div>
 
         {/* Right Column: Monaco Code Editor */}

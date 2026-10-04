@@ -47,6 +47,26 @@ export const Navbar: React.FC = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Close drawer on Escape key and lock body scroll when mobile menu is open
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setOpenDropdown(null);
+      }
+    };
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -77,7 +97,12 @@ export const Navbar: React.FC = () => {
       <header className="navbar-header">
         <div className="navbar-container" ref={dropdownRef}>
           {/* Brand Logo - Navigates to /dashboard when authenticated */}
-          <Link to={brandDestination} className="navbar-brand" title="CodingFriend Home / Dashboard">
+          <Link
+            to={brandDestination}
+            className="navbar-brand"
+            title="CodingFriend Home / Dashboard"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <div className="brand-icon-wrapper">
               <Code2 className="brand-icon" size={20} />
             </div>
@@ -315,70 +340,109 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <button
-            className="mobile-menu-toggle"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Mobile & Mid-Screen Menu Toggle Button */}
+          <div className="mobile-controls-cluster">
+            {/* Quick theme toggle also visible on mobile navbar */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle-btn mobile-header-theme-btn"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              aria-label="Toggle theme mode"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
+            <button
+              className={`mobile-menu-toggle ${mobileMenuOpen ? 'is-open' : ''}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="mobile-nav-drawer">
-            <div className="mobile-drawer-top-row">
-              <button
-                onClick={toggleTheme}
-                className="theme-toggle-btn mobile-theme-btn"
-                aria-label="Toggle theme mode"
-              >
-                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-              </button>
+      {/* Backdrop for Mobile/Mid Screen Drawer */}
+      {mobileMenuOpen && (
+        <div
+          className="mobile-nav-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile & Mid-Screen Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+          {isAuthenticated && user && (
+            <div className="mobile-user-card">
+              <div className="navbar-avatar-wrapper avatar-large">
+                {userAvatar ? (
+                  <img src={userAvatar} alt="Profile" className="navbar-avatar-img" />
+                ) : (
+                  <div className="navbar-avatar-initials">
+                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                )}
+              </div>
+              <div className="mobile-user-info">
+                <div className="mobile-user-name">{user.fullName || 'Learner'}</div>
+                <div className="mobile-user-email">{user.email}</div>
+                {isAdmin && <span className="role-tag role-admin">Administrator</span>}
+              </div>
             </div>
+          )}
 
+          <div className="mobile-nav-sections">
             {isAuthenticated && isAdmin ? (
               <>
+                <div className="mobile-section-label">Admin Control</div>
                 <NavLink
                   to="/admin"
                   end
                   className={({ isActive }) => `mobile-nav-link admin-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <ShieldCheck size={16} /> Admin Hub
+                  <ShieldCheck size={18} />
+                  <span>Admin Hub</span>
                 </NavLink>
                 <NavLink
                   to="/admin/problems"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Layers size={16} /> Problems
+                  <Layers size={18} />
+                  <span>Problems Management</span>
                 </NavLink>
                 <NavLink
                   to="/admin/contests"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Trophy size={16} /> Contests
+                  <Trophy size={18} />
+                  <span>Contests Management</span>
                 </NavLink>
                 <NavLink
                   to="/admin/support"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <LifeBuoy size={16} /> Support & Bugs
+                  <LifeBuoy size={18} />
+                  <span>Support & Bugs</span>
                 </NavLink>
               </>
             ) : (
               <>
+                <div className="mobile-section-label">Learn & Practice</div>
                 <NavLink
                   to="/problems"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Layers size={16} /> Problems
+                  <Layers size={18} />
+                  <span>Practice Problems</span>
                 </NavLink>
                 {isAuthenticated && (
                   <NavLink
@@ -386,62 +450,81 @@ export const Navbar: React.FC = () => {
                     className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <BookOpen size={16} /> Revision Notes
+                    <BookOpen size={18} />
+                    <div className="mobile-link-text-wrap">
+                      <span>Revision Notes</span>
+                      <span className="dropdown-item-tag">AI Mnemonic</span>
+                    </div>
                   </NavLink>
                 )}
+
+                <div className="mobile-section-label">Arena & Standings</div>
                 <NavLink
                   to="/contests"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Trophy size={16} /> Contests
+                  <Trophy size={18} />
+                  <span>Contests</span>
                 </NavLink>
                 <NavLink
                   to="/duels"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Swords size={16} /> 1v1 Duels
+                  <Swords size={18} />
+                  <div className="mobile-link-text-wrap">
+                    <span>1v1 Duels</span>
+                    <span className="dropdown-item-tag tag-live">Live</span>
+                  </div>
                 </NavLink>
                 <NavLink
                   to="/leaderboard"
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Trophy size={16} /> Rankings
+                  <Trophy size={18} />
+                  <span>Rankings</span>
                 </NavLink>
+
                 {isAuthenticated && (
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setSupportModalOpen(true);
-                    }}
-                    className="mobile-nav-link"
-                  >
-                    <LifeBuoy size={16} /> Help & Bug Reports
-                  </button>
+                  <>
+                    <div className="mobile-section-label">Assistance</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setSupportModalOpen(true);
+                      }}
+                      className="mobile-nav-link mobile-help-btn"
+                    >
+                      <LifeBuoy size={18} />
+                      <span>Get Help / Report Bug</span>
+                    </button>
+                  </>
                 )}
               </>
             )}
+          </div>
 
-
+          <div className="mobile-drawer-footer">
             {isAuthenticated && user ? (
-              <div className="mobile-user-section">
+              <>
                 <NavLink
                   to={isAdmin ? '/admin/profile' : '/profile'}
                   className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <UserIcon size={16} />
-                  <span>{isAdmin ? 'Admin Profile' : 'Profile'} ({user.fullName || user.email})</span>
+                  <UserIcon size={18} />
+                  <span>My Profile</span>
                 </NavLink>
-                <button onClick={handleLogout} className="mobile-nav-link logout-link">
-                  <LogOut size={16} />
-                  <span>Logout</span>
+                <button onClick={handleLogout} className="mobile-nav-link mobile-logout-btn">
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="mobile-auth-links">
+              <div className="mobile-auth-grid">
                 <Link
                   to="/login"
                   className="btn btn-secondary w-full"
@@ -459,8 +542,8 @@ export const Navbar: React.FC = () => {
               </div>
             )}
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       {/* Student Support & Bug Report Modal */}
       <SupportModal

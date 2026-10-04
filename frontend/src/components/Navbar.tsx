@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Code2,
   User as UserIcon,
   LogOut,
   Menu,
   X,
-  Sparkles,
   ShieldCheck,
   Layers,
   Trophy,
@@ -19,6 +17,7 @@ import {
   Search,
   Command,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { SupportModal } from './SupportModal';
@@ -119,15 +118,7 @@ export const Navbar: React.FC = () => {
             title="CodingFriend Home / Dashboard"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <div className="brand-icon-wrapper">
-              <Code2 className="brand-icon" size={20} />
-            </div>
-            <div className="brand-text">
-              <span className="brand-title">CodingFriend</span>
-              <span className="brand-badge">
-                <Sparkles size={11} className="text-yellow" /> SocraBuddy
-              </span>
-            </div>
+            <BrandLogo size={32} showText={true} badgeText="SocraBuddy" />
           </Link>
 
           {/* Desktop Navigation Links with Dropdowns */}

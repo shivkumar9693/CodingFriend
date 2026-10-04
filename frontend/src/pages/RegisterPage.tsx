@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Lock, Mail, User as UserIcon, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { GoogleLoginButton } from '../components/GoogleLoginButton';
+import { BrandLogo } from '../components/BrandLogo';
 import { ApiError } from '../services/apiClient';
 
 export const RegisterPage: React.FC = () => {
@@ -79,8 +80,10 @@ export const RegisterPage: React.FC = () => {
     <div className="auth-page-container">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-icon-circle">
-            <UserPlus size={20} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+            <Link to="/" title="CodingFriend Home">
+              <BrandLogo size={48} showText={false} />
+            </Link>
           </div>
           <h1 className="auth-title">Create Account</h1>
           <p className="auth-subtitle">Join CodingFriend and master algorithmic problem solving with SocraBuddy AI Mentor</p>

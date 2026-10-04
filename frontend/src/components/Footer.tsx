@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Code2,
   Sparkles,
   Shield,
   Cpu,
@@ -11,6 +10,7 @@ import {
   CheckCircle2,
   Github,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -22,15 +22,7 @@ export const Footer: React.FC = () => {
         <div className="footer-top-brand-grid">
           <div className="footer-brand-hero">
             <div className="footer-brand-header">
-              <div className="footer-logo-badge">
-                <Code2 size={22} className="footer-logo-icon" />
-              </div>
-              <div className="footer-title-group">
-                <span className="footer-brand-name">CodingFriend</span>
-                <span className="footer-socrabuddy-pill">
-                  <Sparkles size={11} className="mr-1" /> SocraBuddy AI
-                </span>
-              </div>
+              <BrandLogo size={36} showText={true} badgeText="SocraBuddy AI" />
             </div>
 
             <p className="footer-mission-text">

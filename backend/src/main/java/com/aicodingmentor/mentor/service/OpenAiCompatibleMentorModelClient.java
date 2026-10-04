@@ -87,30 +87,30 @@ public class OpenAiCompatibleMentorModelClient implements MentorModelClient {
                         : "https://api.groq.com/openai/v1");
             String defaultMod = (customModel != null && !customModel.isBlank())
                     ? customModel
-                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash-latest" : "llama-3.3-70b-specdec");
+                    : (bUrl.contains("googleapis") ? "gemini-1.5-flash" : "llama-3.3-70b-versatile");
             List<String> models = bUrl.contains("googleapis")
-                    ? List.of(defaultMod, "gemini-1.5-flash-latest", "gemini-1.5-flash-8b", "gemini-2.0-flash-exp", "gemini-1.5-flash")
-                    : List.of(defaultMod, "llama-3.3-70b-specdec", "llama-3.2-3b-preview", "qwen-2.5-32b", "deepseek-r1-distill-llama-70b");
+                    ? List.of(defaultMod, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
+                    : List.of(defaultMod, "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it");
             providers.add(new CloudProvider("Custom-AI", bUrl, customApiKey.trim(), models));
         }
 
-        // 2. Groq Cloud Provider (Current Active Groq Models)
+        // 2. Groq Cloud Provider (Current Active Production Groq Models)
         if (groqApiKey != null && !groqApiKey.isBlank()) {
             providers.add(new CloudProvider(
                     "Groq-Cloud",
                     "https://api.groq.com/openai/v1",
                     groqApiKey.trim(),
-                    List.of("llama-3.3-70b-specdec", "llama-3.2-3b-preview", "llama-3.2-1b-preview", "qwen-2.5-32b", "deepseek-r1-distill-llama-70b")
+                    List.of("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it")
             ));
         }
 
-        // 3. Google Gemini OpenAI-compatible Provider (Current Active Gemini Models)
+        // 3. Google Gemini OpenAI-compatible Provider (Current Active Production Gemini Models)
         if (geminiApiKey != null && !geminiApiKey.isBlank()) {
             providers.add(new CloudProvider(
                     "Google-Gemini",
                     "https://generativelanguage.googleapis.com/v1beta/openai",
                     geminiApiKey.trim(),
-                    List.of("gemini-1.5-flash-latest", "gemini-1.5-flash-8b", "gemini-2.0-flash-exp", "gemini-1.5-flash")
+                    List.of("gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro")
             ));
         }
 

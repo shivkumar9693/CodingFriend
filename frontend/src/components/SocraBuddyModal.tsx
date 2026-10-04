@@ -121,6 +121,7 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
 
   const handleRequestHint = async (levelToFetch: HintLevel = selectedLevel, customQuestion?: string) => {
     const questionText = customQuestion !== undefined ? customQuestion : userQuestion.trim();
+    setSelectedLevel(levelToFetch);
     setIsLoading(true);
     setError(null);
 
@@ -165,9 +166,9 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
           );
         },
         (res) => {
-          setSelectedLevel(levelToFetch);
+          setSelectedLevel(res.hintLevel || levelToFetch);
           setMessages((prev) =>
-            prev.map((m) => (m.id === assistantMsgId ? { ...m, hintData: res, text: undefined } : m))
+            prev.map((m) => (m.id === assistantMsgId ? { ...m, hintData: res, level: res.hintLevel || levelToFetch, text: undefined } : m))
           );
           setIsLoading(false);
         },
@@ -263,7 +264,10 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                   key={item.level}
                   type="button"
                   className={`depth-pill ${selectedLevel === item.level ? 'active' : ''}`}
-                  onClick={() => handleRequestHint(item.level)}
+                  onClick={() => {
+                    setSelectedLevel(item.level);
+                    handleRequestHint(item.level);
+                  }}
                   disabled={isLoading}
                   title={item.desc}
                 >
@@ -402,7 +406,11 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                             key={i}
                             type="button"
                             className="concept-chip"
-                            onClick={() => handleRequestHint(getNextLevel(msg.level || selectedLevel) || selectedLevel, `Explain how ${kw} applies to this problem`)}
+                            onClick={() => {
+                              const nextLvl = getNextLevel(msg.level || selectedLevel) || selectedLevel;
+                              setSelectedLevel(nextLvl);
+                              handleRequestHint(nextLvl, `Explain how ${kw} applies to this problem`);
+                            }}
                             title={`Ask about ${kw}`}
                           >
                             #{kw}

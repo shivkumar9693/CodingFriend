@@ -44,7 +44,7 @@ public record ProblemSummaryResponse(
                 problem.getSlug(),
                 problem.getDifficulty(),
                 problem.getSupportedLanguage(),
-                problem.getTags(),
+                problem.getTags() != null ? Set.copyOf(problem.getTags()) : Set.of(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt()
         );

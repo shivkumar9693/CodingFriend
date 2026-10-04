@@ -91,7 +91,7 @@ public record ProblemDetailResponse(
                 problem.getSupportedLanguage(),
                 ALL_SUPPORTED_LANGUAGES,
                 starterTemplates != null ? starterTemplates : Map.of(),
-                problem.getTags(),
+                problem.getTags() != null ? Set.copyOf(problem.getTags()) : Set.of(),
                 sampleTestCases != null ? sampleTestCases : List.of(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt()

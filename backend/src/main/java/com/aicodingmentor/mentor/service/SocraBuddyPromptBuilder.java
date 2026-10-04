@@ -257,27 +257,35 @@ public class SocraBuddyPromptBuilder implements PromptBuilder {
     }
 
     private String getLevelSpecificInstructions(HintLevel level) {
-        return switch (level) {
+        String baseRules = """
+                GENERAL DIALOGUE & ANTI-SPOIL GUARDRAIL:
+                - If the learner asks for the full code, a complete function, or direct answers (e.g. 'give me the function', 'write the code'):
+                  Politely decline to provide copy-paste code and instead guide them using the requested HINT LEVEL below.
+                - If the learner's question is off-topic, re-route them gently back to the coding challenge.
+                - Always tailor your response strictly to the requested HINT LEVEL:
+                """;
+
+        return baseRules + switch (level) {
             case LEVEL_1_NUDGE -> """
                     HINT TIER 1 (GENTLE NUDGE):
-                    - Do NOT explain the full algorithm or identify the exact bug line.
-                    - Ask an observational question about edge cases (e.g., empty collection, zeros, negative numbers, single element).
-                    - Encourage the learner to verify their assumptions.
+                    - Do NOT explain the full algorithm or provide the implementation.
+                    - Answer their question by guiding their intuition with an observational Socratic inquiry (e.g. manual tracing with pen & paper, invariant check).
+                    - Prompt them to examine input boundaries and relationships.
                     """;
             case LEVEL_2_CONCEPT -> """
                     HINT TIER 2 (CONCEPTUAL HINT):
-                    - Explain the fundamental computer science concept or invariant.
-                    - Highlight the relationship between the data structure properties and the problem constraints.
+                    - Explain the fundamental algorithmic pattern, data structure, or mathematical property (e.g. HashMaps, Two-Pointers, Space-Time trade-offs).
+                    - Clarify terminology and conceptual mechanics without writing concrete code.
                     """;
             case LEVEL_3_ALGORITHM -> """
                     HINT TIER 3 (ALGORITHMIC BLUEPRINT):
-                    - Outline the step-by-step logic in plain English steps (Step 1, Step 2, Step 3).
-                    - Do NOT write source code blocks. Describe the algorithm structure conceptually.
+                    - Provide a clear, step-by-step plain English architectural blueprint (Step 1, Step 2, Step 3, Step 4).
+                    - Show them the logical flow of data without writing complete raw code functions.
                     """;
             case LEVEL_4_TARGETED -> """
                     HINT TIER 4 (TARGETED POINTER):
-                    - Point to the specific loop, variable, condition, or operation that caused the issue.
-                    - Explain WHY that specific condition behaves unexpectedly without rewriting the code for them.
+                    - Point directly to the specific condition, variable update, edge case check, or loop invariant needing attention.
+                    - Highlight the exact conceptual flaw in their current code structure.
                     """;
         };
     }

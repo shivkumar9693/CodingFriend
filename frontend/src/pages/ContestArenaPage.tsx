@@ -111,6 +111,25 @@ export const ContestArenaPage: React.FC = () => {
     };
   }, [handleVisibilityChange]);
 
+  // Keyboard Shortcuts (Ctrl+Enter to Run, Ctrl+Alt+Enter to Submit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.altKey && e.key === 'Enter') || (e.metaKey && e.shiftKey && e.key === 'Enter')) {
+        e.preventDefault();
+        if (!isRunning && !isSubmitting) {
+          handleSubmitCode();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isRunning && !isSubmitting) {
+          handleRunCode();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRunning, isSubmitting, currentProblemDetail, code, contest]);
+
   // 4. Anti-Cheat: Intercept External Clipboard Paste
   const handlePasteCheck = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');

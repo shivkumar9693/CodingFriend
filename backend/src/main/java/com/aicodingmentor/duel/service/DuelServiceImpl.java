@@ -34,15 +34,28 @@ public class DuelServiceImpl implements DuelService {
     private final DuelRepository duelRepository;
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     public DuelServiceImpl(
             DuelRepository duelRepository,
             ProblemRepository problemRepository,
             UserRepository userRepository
     ) {
+        this(duelRepository, problemRepository, userRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DuelServiceImpl(
+            DuelRepository duelRepository,
+            ProblemRepository problemRepository,
+            UserRepository userRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate
+    ) {
         this.duelRepository = duelRepository;
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
@@ -111,7 +124,9 @@ public class DuelServiceImpl implements DuelService {
         duel.setEndTime(Instant.now().plus(Duration.ofMinutes(15)));
 
         Duel saved = duelRepository.save(duel);
-        return DuelDto.from(saved);
+        DuelDto dto = DuelDto.from(saved);
+        broadcastDuelUpdate(dto);
+        return dto;
     }
 
     @Override
@@ -134,7 +149,9 @@ public class DuelServiceImpl implements DuelService {
         }
 
         Duel saved = duelRepository.save(duel);
-        return DuelDto.from(saved);
+        DuelDto dto = DuelDto.from(saved);
+        broadcastDuelUpdate(dto);
+        return dto;
     }
 
     @Override
@@ -170,7 +187,19 @@ public class DuelServiceImpl implements DuelService {
         }
 
         Duel saved = duelRepository.save(duel);
-        return DuelDto.from(saved);
+        DuelDto dto = DuelDto.from(saved);
+        broadcastDuelUpdate(dto);
+        return dto;
+    }
+
+    private void broadcastDuelUpdate(DuelDto dto) {
+        if (messagingTemplate != null && dto != null && dto.roomCode() != null) {
+            try {
+                messagingTemplate.convertAndSend("/topic/duel/" + dto.roomCode().toUpperCase(), dto);
+            } catch (Exception ignored) {
+                // Silently ignore broadcast failure to maintain 100% resilience
+            }
+        }
     }
 
     @Override

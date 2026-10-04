@@ -121,6 +121,7 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
 
   const handleRequestHint = async (levelToFetch: HintLevel = selectedLevel, customQuestion?: string) => {
     const questionText = customQuestion !== undefined ? customQuestion : userQuestion.trim();
+    setSelectedLevel(levelToFetch);
     setIsLoading(true);
     setError(null);
 
@@ -138,30 +139,46 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
       setUserQuestion('');
     }
 
-    try {
-      const res = await mentorService.getHint({
-        problemId,
-        sourceCode,
-        hintLevel: levelToFetch,
-        userQuestion: questionText || undefined,
-        lastErrorMessage: lastErrorMessage || undefined,
-      });
+    const assistantMsgId = `assistant-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMsgId,
+        sender: 'assistant',
+        text: '',
+        level: levelToFetch,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
 
-      setSelectedLevel(levelToFetch);
-      const assistantMsgId = `assistant-${Date.now()}`;
-      setMessages((prev) => [
-        ...prev,
+    try {
+      await mentorService.streamHint(
         {
-          id: assistantMsgId,
-          sender: 'assistant',
-          hintData: res,
-          level: levelToFetch,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          problemId,
+          sourceCode,
+          hintLevel: levelToFetch,
+          userQuestion: questionText || undefined,
+          lastErrorMessage: lastErrorMessage || undefined,
         },
-      ]);
+        (token) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantMsgId ? { ...m, text: (m.text || '') + token } : m))
+          );
+        },
+        (res) => {
+          setSelectedLevel(res.hintLevel || levelToFetch);
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantMsgId ? { ...m, hintData: res, level: res.hintLevel || levelToFetch, text: undefined } : m))
+          );
+          setIsLoading(false);
+        },
+        (err) => {
+          setError(err instanceof Error ? err.message : 'Mentor is temporarily unavailable. Please try again.');
+          setIsLoading(false);
+        }
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Mentor is temporarily unavailable. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -247,7 +264,10 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                   key={item.level}
                   type="button"
                   className={`depth-pill ${selectedLevel === item.level ? 'active' : ''}`}
-                  onClick={() => handleRequestHint(item.level)}
+                  onClick={() => {
+                    setSelectedLevel(item.level);
+                    handleRequestHint(item.level);
+                  }}
                   disabled={isLoading}
                   title={item.desc}
                 >
@@ -335,7 +355,29 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                   </div>
                 )}
 
-                {/* Assistant Socratic Hint */}
+                {/* Assistant Socratic Hint (Streaming State) */}
+                {msg.sender === 'assistant' && !msg.hintData && msg.text !== undefined && (
+                  <div className="assistant-bubble streaming-bubble">
+                    <div className="assistant-header-meta">
+                      <span className="level-badge">
+                        {msg.level ? HINT_LEVELS.find((l) => l.level === msg.level)?.label : 'Hint'}
+                      </span>
+                      <span className="hint-headline">
+                        SocraBuddy Guidance
+                      </span>
+                    </div>
+                    <p className="assistant-text">
+                      {msg.text || (
+                        <span className="streaming-dots">
+                          <Loader2 size={13} className="animate-spin inline mr-1" />
+                          Constructing Socratic insight...
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {/* Assistant Socratic Hint (Finalized) */}
                 {msg.sender === 'assistant' && msg.hintData && (
                   <div className="assistant-bubble">
                     <div className="assistant-header-meta">
@@ -364,7 +406,11 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                             key={i}
                             type="button"
                             className="concept-chip"
-                            onClick={() => handleRequestHint(selectedLevel, `Explain how ${kw} applies to this problem`)}
+                            onClick={() => {
+                              const nextLvl = getNextLevel(msg.level || selectedLevel) || selectedLevel;
+                              setSelectedLevel(nextLvl);
+                              handleRequestHint(nextLvl, `Explain how ${kw} applies to this problem`);
+                            }}
                             title={`Ask about ${kw}`}
                           >
                             #{kw}
@@ -454,7 +500,7 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
             </div>
           ))}
 
-          {isLoading && (
+          {isLoading && !messages.some((m) => m.sender === 'assistant' && !m.hintData && !m.diagnosisData) && (
             <div className="chat-row assistant-row">
               <div className="message-avatar">
                 <Sparkles size={15} className="spinner-icon text-yellow" />

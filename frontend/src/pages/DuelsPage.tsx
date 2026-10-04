@@ -26,6 +26,7 @@ import { SubmissionResponse, TestCaseEvaluationResult } from '../types/submissio
 import { duelService } from '../services/duelService';
 import { problemService } from '../services/problemService';
 import { submissionService } from '../services/submissionService';
+import { websocketService } from '../services/websocketService';
 import { useAuth } from '../context/AuthContext';
 import { CodeEditor } from '../components/CodeEditor';
 
@@ -216,15 +217,50 @@ export const DuelsPage: React.FC = () => {
   useEffect(() => {
     if (paramRoomCode) {
       pollDuelState(paramRoomCode, false);
-      pollingRef.current = setInterval(() => pollDuelState(paramRoomCode, false), 2500);
+      // Fallback polling every 5s if WebSocket is offline
+      pollingRef.current = setInterval(() => pollDuelState(paramRoomCode, false), 5000);
+
+      // Instant Zero-Cost STOMP WebSocket Subscription for 0ms latency opponent updates
+      const unsubscribe = websocketService.subscribeToDuel(paramRoomCode, (updatedDuel) => {
+        if (!updatedDuel) return;
+        setActiveDuel(updatedDuel);
+        localStorage.setItem(ACTIVE_DUEL_STORAGE_KEY, updatedDuel.roomCode);
+
+        if (updatedDuel.status === 'COMPLETED') {
+          setShowVictoryModal(true);
+          localStorage.removeItem(ACTIVE_DUEL_STORAGE_KEY);
+          localStorage.removeItem(`duel_code_${updatedDuel.roomCode}`);
+          setSavedRoomCode(null);
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+
+        if (
+          updatedDuel.status === 'IN_PROGRESS' &&
+          updatedDuel.problemSlug &&
+          loadedProblemSlugRef.current !== updatedDuel.problemSlug
+        ) {
+          loadedProblemSlugRef.current = updatedDuel.problemSlug;
+          problemService.getProblemByIdOrSlug(updatedDuel.problemSlug).then((p) => {
+            setProblemDetail(p);
+            const savedCode = localStorage.getItem(`duel_code_${updatedDuel.roomCode}`);
+            if (savedCode) {
+              setCode(savedCode);
+            } else {
+              setCode(p.starterCode || 'class Solution {\n    // Code your 1v1 duel solution here\n}');
+            }
+          }).catch(() => {});
+        }
+      });
+
+      return () => {
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        unsubscribe();
+      };
     } else {
       loadedProblemSlugRef.current = null;
       setActiveDuel(null);
       setProblemDetail(null);
     }
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
   }, [paramRoomCode]);
 
   // Countdown clock

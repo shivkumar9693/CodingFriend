@@ -33,7 +33,6 @@ public class SocraBuddyMentorController {
     }
 
     @PostMapping("/hints")
-    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a tiered Socratic hint from SocraBuddy", description = "Returns non-spoiler Socratic guidance according to requested hint tier")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Hint generated successfully"),
@@ -50,8 +49,17 @@ public class SocraBuddyMentorController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(value = {"/stream-hint", "/hints/stream"}, produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Stream tiered Socratic hint token-by-token over SSE", description = "Streams progressive guidance tokens in real-time with sub-200ms perceived response time")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamHint(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @Valid @RequestBody SocraBuddyHintRequest request
+    ) {
+        UUID userId = currentUser != null ? currentUser.getId() : UUID.randomUUID();
+        return mentorService.streamHint(userId, request);
+    }
+
     @PostMapping("/diagnose")
-    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Diagnose submission failure with SocraBuddy", description = "Analyzes execution error and provides Socratic diagnostic insight")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Diagnosis generated successfully"),
@@ -69,7 +77,6 @@ public class SocraBuddyMentorController {
     }
 
     @PostMapping("/inline-assist")
-    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get real-time inline Socratic micro-nudge for Monaco Editor", description = "Analyzes active line and gives a non-spoiler 1-sentence thought prompt")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Inline assist nudge generated successfully"),

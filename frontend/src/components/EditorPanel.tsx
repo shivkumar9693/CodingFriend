@@ -81,6 +81,10 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   const [selectedTestCaseTab, setSelectedTestCaseTab] = useState<number>(0);
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState<boolean>(false);
   const [consoleTab, setConsoleTab] = useState<'cases' | 'hints'>('cases');
+  const [isCustomInputMode, setIsCustomInputMode] = useState<boolean>(false);
+  const [customInputText, setCustomInputText] = useState<string>(() => {
+    return sampleTestCases.length > 0 ? sampleTestCases[0].inputData : '';
+  });
 
   // Live Socratic Inline Mentor State
   const [isLiveMentorEnabled, setIsLiveMentorEnabled] = useState<boolean>(() => {
@@ -668,50 +672,81 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
                     </span>
                   </div>
 
-                  {sampleTestCases.length > 0 ? (
+                  {sampleTestCases.length > 0 || isCustomInputMode ? (
                     <div className="test-cases-viewer">
                       <div className="test-case-tabs">
                         {sampleTestCases.map((tc, idx) => (
                           <button
                             key={idx}
                             type="button"
-                            className={`test-tab-btn ${selectedTestCaseTab === idx ? 'active' : ''}`}
-                            onClick={() => setSelectedTestCaseTab(idx)}
+                            className={`test-tab-btn ${!isCustomInputMode && selectedTestCaseTab === idx ? 'active' : ''}`}
+                            onClick={() => {
+                              setIsCustomInputMode(false);
+                              setSelectedTestCaseTab(idx);
+                            }}
                           >
                             <span className="tab-indicator font-mono">#{idx + 1}</span>
                             <span>Case {tc.sequenceOrder || idx + 1}</span>
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          className={`test-tab-btn custom-input-tab-btn ${isCustomInputMode ? 'active' : ''}`}
+                          onClick={() => setIsCustomInputMode(true)}
+                          title="Write custom testcase input"
+                        >
+                          <span className="tab-indicator font-mono">+</span>
+                          <span>Custom Testcase</span>
+                        </button>
                       </div>
 
-                      {sampleTestCases[selectedTestCaseTab] && (
-                        <div className="selected-case-details">
-                          <div className="public-case-grid">
-                            <div className="case-field-col">
-                              <label className="field-label">Input</label>
-                              <pre className="field-pre">{sampleTestCases[selectedTestCaseTab].inputData}</pre>
+                      {isCustomInputMode ? (
+                        <div className="selected-case-details custom-case-details">
+                          <div className="custom-input-card">
+                            <div className="custom-input-header">
+                              <label className="field-label">Custom Testcase Arguments</label>
+                              <span className="text-xs text-muted">Edit parameters below to test custom edge cases</span>
                             </div>
-                            <div className="case-field-col">
-                              <label className="field-label">Expected Output</label>
-                              <pre className="field-pre">{sampleTestCases[selectedTestCaseTab].expectedOutput}</pre>
-                            </div>
-                            <div className="case-field-col">
-                              <label className="field-label">Actual Output</label>
-                              <pre className="field-pre text-placeholder">
-                                (Click &lsquo;Run&rsquo; to evaluate)
-                              </pre>
-                            </div>
+                            <textarea
+                              className="custom-input-textarea"
+                              value={customInputText}
+                              onChange={(e) => setCustomInputText(e.target.value)}
+                              placeholder="e.g. [2,7,11,15]&#10;9"
+                              rows={4}
+                              spellCheck={false}
+                            />
                           </div>
-
-                          {sampleTestCases[selectedTestCaseTab].explanation && (
-                            <div className="case-explanation-row">
-                              <label className="field-label">Explanation</label>
-                              <p className="case-explanation-text">
-                                {sampleTestCases[selectedTestCaseTab].explanation}
-                              </p>
-                            </div>
-                          )}
                         </div>
+                      ) : (
+                        sampleTestCases[selectedTestCaseTab] && (
+                          <div className="selected-case-details">
+                            <div className="public-case-grid">
+                              <div className="case-field-col">
+                                <label className="field-label">Input</label>
+                                <pre className="field-pre">{sampleTestCases[selectedTestCaseTab].inputData}</pre>
+                              </div>
+                              <div className="case-field-col">
+                                <label className="field-label">Expected Output</label>
+                                <pre className="field-pre">{sampleTestCases[selectedTestCaseTab].expectedOutput}</pre>
+                              </div>
+                              <div className="case-field-col">
+                                <label className="field-label">Actual Output</label>
+                                <pre className="field-pre text-placeholder">
+                                  (Click &lsquo;Run&rsquo; to evaluate)
+                                </pre>
+                              </div>
+                            </div>
+
+                            {sampleTestCases[selectedTestCaseTab].explanation && (
+                              <div className="case-explanation-row">
+                                <label className="field-label">Explanation</label>
+                                <p className="case-explanation-text">
+                                  {sampleTestCases[selectedTestCaseTab].explanation}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )
                       )}
                     </div>
                   ) : (
@@ -754,8 +789,16 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
           <Sparkles size={14} className="sparkle-icon text-yellow" />
           <span>{getLanguageDisplayName(selectedLanguage)} Sandboxed Execution &bull; SocraBuddy Socratic Guidance</span>
         </div>
-        <div className="editor-footer-hint text-xs text-muted">
-          <span>Ctrl+Enter to Submit</span>
+        <div className="editor-footer-shortcuts">
+          <span className="shortcut-item">
+            <kbd>Ctrl+↵</kbd> Run
+          </span>
+          <span className="shortcut-item">
+            <kbd>Ctrl+Alt+↵</kbd> Submit
+          </span>
+          <span className="shortcut-item">
+            <kbd>Ctrl+/</kbd> SocraBuddy
+          </span>
         </div>
       </div>
     </div>

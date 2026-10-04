@@ -72,7 +72,7 @@ public record AdminProblemDetailResponse(
                 problem.getExamples(),
                 problem.getStarterCode(),
                 problem.getSupportedLanguage(),
-                problem.getTags(),
+                problem.getTags() != null ? Set.copyOf(problem.getTags()) : Set.of(),
                 allTestCases != null ? allTestCases : List.of(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt()

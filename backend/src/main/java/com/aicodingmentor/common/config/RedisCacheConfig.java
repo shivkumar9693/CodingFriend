@@ -41,6 +41,10 @@ public class RedisCacheConfig implements CachingConfigurer {
     public static final String CACHE_SUBMISSION_STATUS = "submission-status";
     public static final String CACHE_LEADERBOARD = "leaderboard";
     public static final String CACHE_CONTESTS = "contests";
+    public static final String CACHE_USER_AUTH_EMAIL = "user-auth-email";
+    public static final String CACHE_USER_AUTH_ID = "user-auth-id";
+    public static final String CACHE_USER_PROFILE = "user-profile";
+    public static final String CACHE_USER_ACTIVITY = "user-activity";
 
     @Bean
     public RedisCacheConfiguration defaultCacheConfiguration() {
@@ -75,6 +79,14 @@ public class RedisCacheConfig implements CachingConfigurer {
                 .withCacheConfiguration(CACHE_LEADERBOARD,
                         defaultCacheConfiguration.entryTtl(Duration.ofMinutes(5)))
                 .withCacheConfiguration(CACHE_CONTESTS,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration(CACHE_USER_AUTH_EMAIL,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(15)))
+                .withCacheConfiguration(CACHE_USER_AUTH_ID,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(15)))
+                .withCacheConfiguration(CACHE_USER_PROFILE,
+                        defaultCacheConfiguration.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration(CACHE_USER_ACTIVITY,
                         defaultCacheConfiguration.entryTtl(Duration.ofMinutes(5)));
     }
 

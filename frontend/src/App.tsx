@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -6,30 +6,42 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
+import { LoadingSpinner } from './components/LoadingSpinner';
 
+// Fast critical-path static imports
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { ProblemsPage } from './pages/ProblemsPage';
-import { ProblemDetailPage } from './pages/ProblemDetailPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { DashboardPage } from './pages/DashboardPage';
-import { LeaderboardPage } from './pages/LeaderboardPage';
-import { ContestsPage } from './pages/ContestsPage';
-import { ContestArenaPage } from './pages/ContestArenaPage';
-import { DuelsPage } from './pages/DuelsPage';
-import { RevisionNotesPage } from './pages/RevisionNotesPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AdminProblemsPage } from './pages/admin/AdminProblemsPage';
-import { AdminTestCasesPage } from './pages/admin/AdminTestCasesPage';
-import { AdminSupportPage } from './pages/admin/AdminSupportPage';
-import { AdminContestsPage } from './pages/admin/AdminContestsPage';
-import { AdminProfilePage } from './pages/admin/AdminProfilePage';
-import { NotFoundPage } from './pages/NotFoundPage';
+
+// Route-level code-splitting for high performance and lightweight bundle loading
+const ProblemsPage = React.lazy(() => import('./pages/ProblemsPage').then((m) => ({ default: m.ProblemsPage })));
+const ProblemDetailPage = React.lazy(() => import('./pages/ProblemDetailPage').then((m) => ({ default: m.ProblemDetailPage })));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const LeaderboardPage = React.lazy(() => import('./pages/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })));
+const ContestsPage = React.lazy(() => import('./pages/ContestsPage').then((m) => ({ default: m.ContestsPage })));
+const ContestArenaPage = React.lazy(() => import('./pages/ContestArenaPage').then((m) => ({ default: m.ContestArenaPage })));
+const DuelsPage = React.lazy(() => import('./pages/DuelsPage').then((m) => ({ default: m.DuelsPage })));
+const RevisionNotesPage = React.lazy(() => import('./pages/RevisionNotesPage').then((m) => ({ default: m.RevisionNotesPage })));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+
+// Admin lazy-loaded bundle
+const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const AdminProblemsPage = React.lazy(() => import('./pages/admin/AdminProblemsPage').then((m) => ({ default: m.AdminProblemsPage })));
+const AdminTestCasesPage = React.lazy(() => import('./pages/admin/AdminTestCasesPage').then((m) => ({ default: m.AdminTestCasesPage })));
+const AdminSupportPage = React.lazy(() => import('./pages/admin/AdminSupportPage').then((m) => ({ default: m.AdminSupportPage })));
+const AdminContestsPage = React.lazy(() => import('./pages/admin/AdminContestsPage').then((m) => ({ default: m.AdminContestsPage })));
+const AdminProfilePage = React.lazy(() => import('./pages/admin/AdminProfilePage').then((m) => ({ default: m.AdminProfilePage })));
 
 import './App.css';
+
+const PageFallback: React.FC = () => (
+  <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <LoadingSpinner size="md" message="Loading..." />
+  </div>
+);
 
 export const App: React.FC = () => {
   return (
@@ -39,7 +51,8 @@ export const App: React.FC = () => {
           <div className="app-container">
             <Navbar />
             <main className="main-content">
-              <Routes>
+              <Suspense fallback={<PageFallback />}>
+                <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
@@ -182,8 +195,9 @@ export const App: React.FC = () => {
                 <Route path="/404" element={<NotFoundPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
-            </main>
-            <Footer />
+            </Suspense>
+          </main>
+          <Footer />
           </div>
         </BrowserRouter>
       </AuthProvider>

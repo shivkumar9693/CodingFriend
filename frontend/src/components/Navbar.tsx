@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Code2,
   User as UserIcon,
   LogOut,
   Menu,
   X,
-  Sparkles,
   ShieldCheck,
   Layers,
   Trophy,
@@ -16,20 +14,37 @@ import {
   Swords,
   BookOpen,
   ChevronDown,
+  Search,
+  Command,
 } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { SupportModal } from './SupportModal';
+import { CommandPalette } from './CommandPalette';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'practice' | 'compete' | 'admin' | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Global shortcut listener for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Close dropdown on outside click or route change
   useEffect(() => {
@@ -103,15 +118,7 @@ export const Navbar: React.FC = () => {
             title="CodingFriend Home / Dashboard"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <div className="brand-icon-wrapper">
-              <Code2 className="brand-icon" size={20} />
-            </div>
-            <div className="brand-text">
-              <span className="brand-title">CodingFriend</span>
-              <span className="brand-badge">
-                <Sparkles size={11} className="text-yellow" /> SocraBuddy
-              </span>
-            </div>
+            <BrandLogo size={32} showText={true} badgeText="SocraBuddy" />
           </Link>
 
           {/* Desktop Navigation Links with Dropdowns */}
@@ -272,6 +279,21 @@ export const Navbar: React.FC = () => {
 
           {/* Desktop Utility / Actions Cluster */}
           <div className="navbar-actions desktop-actions">
+            {/* Global Spotlight Search Trigger */}
+            <button
+              type="button"
+              className="btn-search-trigger"
+              onClick={() => setCommandPaletteOpen(true)}
+              title="Search problems, topics and actions (Ctrl + K / Cmd + K)"
+              data-testid="navbar-spotlight-btn"
+            >
+              <Search size={14} className="search-icon" />
+              <span className="search-placeholder">Quick search...</span>
+              <kbd className="search-kbd">
+                <Command size={10} />K
+              </kbd>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -342,6 +364,16 @@ export const Navbar: React.FC = () => {
 
           {/* Mobile & Mid-Screen Menu Toggle Button */}
           <div className="mobile-controls-cluster">
+            {/* Quick Spotlight Search on Mobile */}
+            <button
+              onClick={() => setCommandPaletteOpen(true)}
+              className="theme-toggle-btn mobile-header-theme-btn"
+              title="Quick search"
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
+
             {/* Quick theme toggle also visible on mobile navbar */}
             <button
               onClick={toggleTheme}
@@ -544,6 +576,13 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Global Spotlight Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onOpenSupport={() => setSupportModalOpen(true)}
+      />
 
       {/* Student Support & Bug Report Modal */}
       <SupportModal

@@ -56,6 +56,37 @@ class PistonCodeExecutorTest {
     }
 
     @Test
+    @DisplayName("Should parse successful execution result from Wandbox")
+    void testWandboxExecute_success() throws Exception {
+        String wandboxPayload = """
+                {
+                  "status": "0",
+                  "compiler_output": "",
+                  "compiler_error": "",
+                  "program_output": "[0, 1]\\n",
+                  "program_error": ""
+                }
+                """;
+
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn(wandboxPayload);
+        doReturn(httpResponse).when(httpClient).send(any(HttpRequest.class), any());
+
+        ExecutionRequest request = ExecutionRequest.of(
+                "public class Solution { public static void main(String[] args) { System.out.println(\"[0, 1]\"); } }",
+                "[2,7,11,15]\n9",
+                SupportedLanguage.JAVA
+        );
+
+        ExecutionResult result = executor.execute(request);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.stdout()).contains("[0, 1]");
+        assertThat(result.exitCode()).isEqualTo(0);
+        assertThat(result.failureReason()).isNull();
+    }
+
+    @Test
     @DisplayName("Should parse successful execution result from Piston")
     void testExecute_success() throws Exception {
         String jsonPayload = """

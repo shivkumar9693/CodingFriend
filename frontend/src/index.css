@@ -1889,12 +1889,47 @@ button, input, textarea, select {
 }
 
 [data-theme="light"] .mobile-menu-toggle {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
 
 [data-theme="light"] .mobile-nav-drawer {
   background-color: #ffffff !important;
-  border-top: 1px solid #cbd5e1 !important;
+  border-left: 1px solid #cbd5e1 !important;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .mobile-user-card {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .mobile-user-name {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .mobile-user-email {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .mobile-nav-link {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .mobile-nav-link:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .mobile-nav-link.active {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+[data-theme="light"] .mobile-drawer-footer {
+  border-top-color: #e2e8f0 !important;
 }
 
 [data-theme="light"] .app-footer,

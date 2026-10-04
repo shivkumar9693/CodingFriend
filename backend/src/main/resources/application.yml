@@ -33,6 +33,8 @@ spring:
     redis:
       repositories:
         enabled: false
+      url: ${REDIS_URL:rediss://default:gQAAAAAAAu-MAAIgcDE1MThhMDllNGI4NzM0YzY0YWJjMThmNjgwNzliN2I1Mw@cheerful-bedbug-192396.upstash.io:6379}
+      timeout: ${REDIS_TIMEOUT_MS:5000}ms
 
 app:
   mail:

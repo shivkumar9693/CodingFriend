@@ -30,7 +30,7 @@
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 10000;
   width: 100%;
   box-sizing: border-box;
 }
@@ -170,7 +170,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  z-index: 250;
+  z-index: 10005;
   animation: navDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -448,68 +448,271 @@
   transform: translateY(-1px);
 }
 
-.mobile-menu-toggle {
+/* Mobile Controls Cluster & Toggle Button */
+.mobile-controls-cluster {
   display: none;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
+.mobile-header-theme-btn {
+  display: inline-flex;
+}
+
+.mobile-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.mobile-menu-toggle.is-open {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+/* Mobile Backdrop */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  top: 56px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10010;
+  animation: mobileFadeIn 0.2s ease;
+}
+
+/* Mobile Navigation Drawer */
 .mobile-nav-drawer {
   position: fixed;
   top: 56px;
-  left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
+  max-width: 380px;
   background: var(--bg-primary);
-  border-top: 1px solid var(--border-subtle);
-  z-index: 99;
-  padding: 1.5rem;
+  border-left: 1px solid var(--border-color);
+  z-index: 10020;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+  animation: mobileSlideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Compact rules for medium screens (1180px - 1340px) */
-@media (min-width: 1181px) and (max-width: 1340px) {
+@keyframes mobileFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mobileSlideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.navbar-avatar-wrapper.avatar-large {
+  width: 42px;
+  height: 42px;
+  font-size: 1.1rem;
+}
+
+.mobile-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mobile-user-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-user-email {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-nav-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.mobile-section-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0.5rem 0.5rem 0.2rem;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-nav-link:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.mobile-nav-link.active {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
+  font-weight: 700;
+}
+
+.mobile-nav-link.admin-nav-link.active {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.mobile-link-text-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.mobile-help-btn {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.mobile-help-btn:hover {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.mobile-drawer-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.mobile-logout-btn {
+  color: #ef4444;
+}
+
+.mobile-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.mobile-auth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Responsive Breakpoints for Desktop vs Medium vs Small */
+@media (min-width: 1025px) and (max-width: 1240px) {
   .navbar-container {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.85rem;
     gap: 0.5rem;
   }
   .navbar-nav {
     gap: 0.15rem;
   }
   .nav-link {
-    padding: 0.35rem 0.55rem;
+    padding: 0.35rem 0.5rem;
     font-size: 0.78rem;
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
   .navbar-actions {
-    gap: 0.4rem;
+    gap: 0.35rem;
   }
   .btn-help-trigger {
-    padding: 0 0.55rem;
+    padding: 0 0.5rem;
     font-size: 0.75rem;
   }
   .navbar-user-name {
-    max-width: 75px;
+    max-width: 70px;
   }
   .logout-btn {
-    padding: 0 0.55rem;
+    padding: 0 0.5rem;
     font-size: 0.75rem;
   }
 }
 
-/* Switch to mobile drawer on anything <= 1180px */
-@media (max-width: 1180px) {
-  .desktop-nav, .desktop-actions {
+/* Switch to mobile drawer on tablet and medium screens <= 1024px */
+@media (max-width: 1024px) {
+  .desktop-nav,
+  .desktop-actions {
     display: none !important;
   }
-  .mobile-menu-toggle {
-    display: block !important;
+  .mobile-controls-cluster {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 0.5rem 0.85rem;
+  }
+  .mobile-nav-drawer {
+    max-width: 100%;
   }
 }
 

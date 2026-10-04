@@ -66,7 +66,10 @@ public class SocraBuddyMentorServiceImpl implements SocraBuddyMentorService {
         CompletableFuture.runAsync(() -> {
             try {
                 String sourceCode = request.sourceCode() != null ? request.sourceCode() : "";
-                String cacheKey = "mentor:hint:" + request.problemId() + ":" + request.hintLevel() + ":" + Integer.toHexString(sourceCode.trim().hashCode());
+                String userQ = request.userQuestion() != null ? request.userQuestion().trim() : "";
+                String cacheKey = "mentor:hint:" + request.problemId() + ":" + request.hintLevel()
+                        + ":" + Integer.toHexString(sourceCode.trim().hashCode())
+                        + (userQ.isEmpty() ? "" : ":q" + Integer.toHexString(userQ.hashCode()));
 
                 SocraBuddyHintResponse response = getCachedHint(cacheKey);
                 if (response == null) {
@@ -262,6 +265,51 @@ public class SocraBuddyMentorServiceImpl implements SocraBuddyMentorService {
 
     private SocraBuddyHintResponse generateFallbackHint(Problem problem, SocraBuddyHintRequest request) {
         String problemTitle = problem.getTitle();
+
+        if (request.userQuestion() != null && !request.userQuestion().isBlank()) {
+            String q = request.userQuestion().toLowerCase();
+            if (q.contains("complement")) {
+                return SocraBuddyHintResponse.of(
+                        request.hintLevel() != null ? request.hintLevel() : HintLevel.LEVEL_2_CONCEPT,
+                        "Understanding Complement Arithmetic",
+                        "For a given number x and a desired target, the complement is (target - x). Instead of scanning the remaining array elements with a nested loop, you can check whether (target - x) was already seen in previous iterations using a fast lookup table.",
+                        "When you inspect number `x` at index `i`, what value `target - x` do you need to check in your lookup structure?",
+                        List.of("Complement", "HashMap", "O(1) Lookup"),
+                        "SocraBuddy Socratic Heuristics"
+                );
+            }
+            if (q.contains("hashmap") || q.contains("map") || q.contains("lookup")) {
+                return SocraBuddyHintResponse.of(
+                        request.hintLevel() != null ? request.hintLevel() : HintLevel.LEVEL_2_CONCEPT,
+                        "Hash Table Lookup & Space-Time Tradeoff",
+                        "A HashMap allows you to trade O(N) auxiliary space for O(1) instantaneous lookup time. By storing each number as the key and its index as the value, you can find the required complement in a single pass.",
+                        "What should you store as the key in the HashMap, and what should you store as the value?",
+                        List.of("HashMap", "Key-Value", "One-Pass"),
+                        "SocraBuddy Socratic Heuristics"
+                );
+            }
+            if (q.contains("slow") || q.contains("time") || q.contains("complexity")) {
+                return SocraBuddyHintResponse.of(
+                        request.hintLevel() != null ? request.hintLevel() : HintLevel.LEVEL_2_CONCEPT,
+                        "Optimizing Time Complexity",
+                        "A nested loop solution requires O(N^2) time complexity. To achieve O(N) linear time, eliminate the inner loop by looking up previously encountered values in constant O(1) time using an auxiliary Hash Table.",
+                        "How can saving seen elements in memory prevent having to re-scan the array?",
+                        List.of("Time Complexity", "Optimization", "Linear Time O(N)"),
+                        "SocraBuddy Socratic Heuristics"
+                );
+            }
+            if (q.contains("edge") || q.contains("boundary")) {
+                return SocraBuddyHintResponse.of(
+                        request.hintLevel() != null ? request.hintLevel() : HintLevel.LEVEL_1_NUDGE,
+                        "Examining Edge Cases & Invariants",
+                        "Consider: (1) Minimum length input (2 elements), (2) Negative values and zero, (3) Duplicate numbers where an element plus itself equals target (e.g., [3, 3] target 6).",
+                        "How does your algorithm avoid using the exact same index twice for the answer?",
+                        List.of("Edge Cases", "Duplicates", "Index Uniqueness"),
+                        "SocraBuddy Socratic Heuristics"
+                );
+            }
+        }
+
         return switch (request.hintLevel()) {
             case LEVEL_1_NUDGE -> SocraBuddyHintResponse.of(
                     HintLevel.LEVEL_1_NUDGE,

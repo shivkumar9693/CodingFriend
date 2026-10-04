@@ -65,7 +65,9 @@ public class SecurityConfig {
                                 "/actuator/info",
                                 "/api/test/public",
                                 "/api/submissions/run",
-                                "/api/v1/submissions/run"
+                                "/api/v1/submissions/run",
+                                "/api/mentor/**",
+                                "/api/v1/mentor/**"
                         ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,

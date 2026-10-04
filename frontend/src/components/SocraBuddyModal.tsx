@@ -358,15 +358,15 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                       <span className="level-badge">
                         {msg.level ? HINT_LEVELS.find((l) => l.level === msg.level)?.label : 'Hint'}
                       </span>
-                      <span className="hint-headline" style={{ opacity: 0.8, fontStyle: 'italic' }}>
-                        SocraBuddy typing...
+                      <span className="hint-headline">
+                        SocraBuddy Guidance
                       </span>
                     </div>
                     <p className="assistant-text">
                       {msg.text || (
                         <span className="streaming-dots">
                           <Loader2 size={13} className="animate-spin inline mr-1" />
-                          Formulating Socratic nudge...
+                          Constructing Socratic insight...
                         </span>
                       )}
                     </p>
@@ -402,7 +402,7 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
                             key={i}
                             type="button"
                             className="concept-chip"
-                            onClick={() => handleRequestHint(selectedLevel, `Explain how ${kw} applies to this problem`)}
+                            onClick={() => handleRequestHint(getNextLevel(msg.level || selectedLevel) || selectedLevel, `Explain how ${kw} applies to this problem`)}
                             title={`Ask about ${kw}`}
                           >
                             #{kw}
@@ -492,7 +492,7 @@ export const SocraBuddyModal: React.FC<SocraBuddyModalProps> = ({
             </div>
           ))}
 
-          {isLoading && (
+          {isLoading && !messages.some((m) => m.sender === 'assistant' && !m.hintData && !m.diagnosisData) && (
             <div className="chat-row assistant-row">
               <div className="message-avatar">
                 <Sparkles size={15} className="spinner-icon text-yellow" />

@@ -318,7 +318,7 @@ export const AiMentorPanel: React.FC<AiMentorPanelProps> = ({
           </div>
 
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && (!hint || !hint.hint) && (
             <div className="mentor-loading-box" data-testid="mentor-loading-box">
               <div className="loading-shimmer-row shimmer-1" />
               <div className="loading-shimmer-row shimmer-2" />
@@ -350,11 +350,12 @@ export const AiMentorPanel: React.FC<AiMentorPanelProps> = ({
           )}
 
           {/* Socratic Hint Display */}
-          {!isLoading && !error && hint && (
+          {!error && hint && (hint.hint || !isLoading) && (
             <div className="mentor-hint-bubble" data-testid="mentor-hint-bubble">
               <div className="quote-mark">&ldquo;</div>
               <p className="hint-text-content" data-testid="hint-text">
                 {hint.hint}
+                {isLoading && <span className="typing-cursor">▌</span>}
               </p>
               <div className="quote-mark-end">&rdquo;</div>
 
